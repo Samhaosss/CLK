@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Linq;
 
 namespace CLK.LexicalCore
@@ -6,8 +7,6 @@ namespace CLK.LexicalCore
     /*
      * TakenReader:
      *      不采用两端缓存，直接将文件读入大数组
-     *      Bug:读取的第一个字符为:?
-     *      对比发现，vs给每个文件头加一个'?' .......
      * */
     public class TakenReader
     {
@@ -32,15 +31,19 @@ namespace CLK.LexicalCore
             {
                 FileInfo fileInfo = new FileInfo(fileName);
                 fileLength = fileInfo.Length;
-                if (fileLength > 0)
-                {
-                    byte[] tmp = new byte[fileLength];
-                    using (var fileHandler = fileInfo.OpenRead())
-                    {
-                        var le = fileHandler.Read(tmp, 0, tmp.Length);
-                        buf = System.Text.Encoding.UTF8.GetString(tmp).ToCharArray();
-                    }
-                }
+                System.Console.WriteLine($"File length:{fileLength}");
+                buf = (fileLength > 0) ? System.IO.File.ReadAllText(fileName).ToArray() : null;
+
+                /*
+                 if (fileLength > 0)
+                 {
+                     byte[] tmp = new byte[fileLength];
+                     using (var fileHandler = fileInfo.OpenRead())
+                     {
+                         var le = fileHandler.Read(tmp, 0, tmp.Length);
+                         buf = System.Text.Encoding.UTF8.GetString(tmp).ToCharArray();
+                     }
+                 }*/
             }
             else
             {
@@ -60,17 +63,29 @@ namespace CLK.LexicalCore
         public bool hasNext() { return fileLength > 0 && buf.Length != endPos; }
 
         // 使用迭代器避免拷贝
-        public System.Collections.Generic.IEnumerable<char> GetWord()
+        public string GetWord(bool finish = false)
         {
-            System.Collections.Generic.IEnumerable<char> result = null;
+            string word = null;
+            char[] result = null;
             if (fileLength > 0 && startPos != endPos)
             {
-                result = buf.Skip(startPos)
-                                 .Take(endPos - startPos);
-                // TODO: 根据词法分析的需求 这里可能需要修改
-                startPos = endPos;
+                result = new char[endPos - startPos];
+                Array.Copy(buf, startPos, result, 0, endPos - startPos);
+                word = new string(result);
+                //result = new string(buf.Skip(startPos)
+                //                .Take(endPos - startPos).ToArray());
+                if (!finish && result.Length > 1)
+                {
+                    word = word.Remove(result.Length - 1);
+                }
+                // 如果未结束，意味着当前字符还未使用，因此需要退格
+                startPos = finish ? endPos : endPos - 1;
             }
-            return result;
+            return word;
+        }
+        public void pass()
+        {
+            startPos = endPos - 1;
         }
 
     }
