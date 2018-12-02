@@ -1,7 +1,9 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-
+/*
+ * 实现了简单了流式读取
+ * **/
 namespace CLK.LexicalCore
 {
     /*
@@ -12,11 +14,12 @@ namespace CLK.LexicalCore
     {
         // private static ILog logger = LogManager.
         //   GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        //流式读取
         private readonly string fileName;
         private readonly long fileLength;
         private int startPos;
-        private int endPos;
-        private readonly char[] buf;
+        private int endPos;//当前已流过字节的之后一个字节
+        private readonly char[] buf;//流
 
         public string TargetFile => fileName;
         public long Length => fileLength;
@@ -27,42 +30,25 @@ namespace CLK.LexicalCore
             startPos = 0;
             endPos = 0;
             // 可能存在权限问题，这里只考虑了文件不存在的异常处理。
-            if (File.Exists(fileName))
-            {
-                FileInfo fileInfo = new FileInfo(fileName);
-                fileLength = fileInfo.Length;
-                System.Console.WriteLine($"File length:{fileLength}");
-                buf = (fileLength > 0) ? System.IO.File.ReadAllText(fileName).ToArray() : null;
-
-                /*
-                 if (fileLength > 0)
-                 {
-                     byte[] tmp = new byte[fileLength];
-                     using (var fileHandler = fileInfo.OpenRead())
-                     {
-                         var le = fileHandler.Read(tmp, 0, tmp.Length);
-                         buf = System.Text.Encoding.UTF8.GetString(tmp).ToCharArray();
-                     }
-                 }*/
-            }
-            else
-            {
-                throw new FileNotFoundException();
-            }
+            FileInfo fileInfo = new FileInfo(fileName);
+            fileLength = fileInfo.Length;
+            buf = (fileLength > 0) ? System.IO.File.ReadAllText(fileName).ToArray() : null;
         }
         public char? next()
         {
             // 如果求值顺序和预期不同，这里可能存在bug
+            //(fileLength > 0 && fileLength != endPos) ? new char?(buf[endPos++]) : null;
             char? ch = null;
+            // 应该使用buf.length而不是fileLength
             if (fileLength > 0 && buf.Length != endPos)
             {
-                ch = new char?(buf[endPos++]);
+                ch = new char?(buf[endPos]);
+                endPos++;
             }
             return ch;
         }
         public bool hasNext() { return fileLength > 0 && buf.Length != endPos; }
 
-        // 使用迭代器避免拷贝
         public string GetWord(bool finish = false)
         {
             string word = null;
@@ -71,21 +57,16 @@ namespace CLK.LexicalCore
             {
                 result = new char[endPos - startPos];
                 Array.Copy(buf, startPos, result, 0, endPos - startPos);
-                word = new string(result);
-                //result = new string(buf.Skip(startPos)
-                //                .Take(endPos - startPos).ToArray());
-                if (!finish && result.Length > 1)
-                {
-                    word = word.Remove(result.Length - 1);
-                }
+                word = (!finish && result.Length > 1) ? new string(result).Remove(result.Length - 1) :
+                        new string(result);
                 // 如果未结束，意味着当前字符还未使用，因此需要退格
                 startPos = finish ? endPos : endPos - 1;
             }
             return word;
         }
-        public void pass()
+        public void pass(bool finish = false)
         {
-            startPos = endPos - 1;
+            startPos = (finish) ? endPos : endPos - 1;
         }
 
     }

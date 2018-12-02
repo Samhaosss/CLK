@@ -1,5 +1,7 @@
 ﻿using System.Collections.Generic;
-
+/*
+ * 这里可以作为各个阶段错误处理的执行程序集
+ * **/
 namespace ErrorCore
 {
     /*
@@ -8,9 +10,14 @@ namespace ErrorCore
      * **/
     public class SampleInterpreterError
     {
+        private static SampleInterpreterError errorHandler;
+        public static SampleInterpreterError GetSampleInterpreterError()
+        {
+            return (errorHandler == null) ? errorHandler = new SampleInterpreterError() : errorHandler;
+        }
         private List<string> errorTable;
 
-        public SampleInterpreterError()
+        private SampleInterpreterError()
         {
             errorTable = new List<string>();
         }
@@ -20,10 +27,7 @@ namespace ErrorCore
         }
         public void reportError()
         {
-            foreach (var error in errorTable)
-            {
-                System.Console.Error.WriteLine(error);
-            }
+            errorTable.ForEach(x => System.Console.Error.WriteLine(x));
         }
     }
 }

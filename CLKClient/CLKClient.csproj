@@ -43,13 +43,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="Demo.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ErrorCore\ErrorCore.csproj">
+      <Project>{8dd58462-39ac-4b43-9adb-b3197b63ffb7}</Project>
+      <Name>ErrorCore</Name>
+    </ProjectReference>
     <ProjectReference Include="..\LexicalCore\LexicalCore.csproj">
       <Project>{8f7e5bb9-8748-423c-9130-d6ef127284d3}</Project>
       <Name>LexicalCore</Name>
