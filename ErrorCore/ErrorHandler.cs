@@ -13,7 +13,7 @@ namespace ErrorCore
         private static SampleInterpreterError errorHandler;
         public static SampleInterpreterError GetSampleInterpreterError()
         {
-            return (errorHandler == null) ? errorHandler = new SampleInterpreterError() : errorHandler;
+            return errorHandler ?? (errorHandler = new SampleInterpreterError());
         }
         private List<string> errorTable;
 
@@ -21,11 +21,11 @@ namespace ErrorCore
         {
             errorTable = new List<string>();
         }
-        public void addError(string msg)
+        public void AddError(string msg)
         {
             errorTable.Add(msg);
         }
-        public void reportError()
+        public void ReportError()
         {
             errorTable.ForEach(x => System.Console.Error.WriteLine(x));
         }

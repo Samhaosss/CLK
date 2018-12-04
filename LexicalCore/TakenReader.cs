@@ -1,73 +1,106 @@
 ﻿using System;
-using System.IO;
 using System.Linq;
 /*
  * 实现了简单了流式读取
  * **/
 namespace CLK.LexicalCore
 {
-    /*
-     * TakenReader:
-     *      不采用两端缓存，直接将文件读入大数组
-     * */
-    public class TakenReader
+    namespace DemoLexer
     {
-        // private static ILog logger = LogManager.
-        //   GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        //流式读取
-        private readonly string fileName;
-        private readonly long fileLength;
-        private int startPos;
-        private int endPos;//当前已流过字节的之后一个字节
-        private readonly char[] buf;//流
-
-        public string TargetFile => fileName;
-        public long Length => fileLength;
-
-        public TakenReader(string fileName)
+        /*
+         *  实现词法分析需要预读，这里为预读实现类的接口
+         *  无论内部怎么变，预读类实现最终将暴露用于读取单个字符、判断流是否读取结束、
+         *  获取或Pass连续的单词、流长度的接口。
+         *  GetWord与Pass的布尔参数用于控制是否保留当前获取的单词的最后一个字符在流中以及最后一个字符是否返回，
+         *  因为词法分析时调用Getword通常是在识别了一个不属于当前单词的字符，方法的默认行为支持这一点。
+         * **/
+        public interface ITakenReader
         {
-            this.fileName = fileName;
-            startPos = 0;
-            endPos = 0;
-            // 可能存在权限问题，这里只考虑了文件不存在的异常处理。
-            FileInfo fileInfo = new FileInfo(fileName);
-            fileLength = fileInfo.Length;
-            buf = (fileLength > 0) ? System.IO.File.ReadAllText(fileName).ToArray() : null;
+            bool HasNext();
+            char? Next();
+            void Pass(bool finish = false);
+            string GetWord(bool finish = false);
+            long GetStreamLength();
         }
-        public char? next()
+        /*
+         * 当前支持从文件、内存创建
+         * **/
+        public class TakenReaderFactory
         {
-            // 如果求值顺序和预期不同，这里可能存在bug
-            //(fileLength > 0 && fileLength != endPos) ? new char?(buf[endPos++]) : null;
-            char? ch = null;
-            // 应该使用buf.length而不是fileLength
-            if (fileLength > 0 && buf.Length != endPos)
+            public static ITakenReader GetFromFile(String fileName)
             {
-                ch = new char?(buf[endPos]);
-                endPos++;
+                // 如果由于种种原因无法读取文件内容，由这里抛出异常
+                char[] data = System.IO.File.ReadAllText(fileName).ToArray();
+                return new TakenReader(data);
             }
-            return ch;
-        }
-        public bool hasNext() { return fileLength > 0 && buf.Length != endPos; }
-
-        public string GetWord(bool finish = false)
-        {
-            string word = null;
-            char[] result = null;
-            if (fileLength > 0 && startPos != endPos)
+            public static ITakenReader GetFromByteStream(char[] stream)
             {
-                result = new char[endPos - startPos];
-                Array.Copy(buf, startPos, result, 0, endPos - startPos);
-                word = (!finish && result.Length > 1) ? new string(result).Remove(result.Length - 1) :
-                        new string(result);
-                // 如果未结束，意味着当前字符还未使用，因此需要退格
-                startPos = finish ? endPos : endPos - 1;
+                return new TakenReader(stream);
             }
-            return word;
         }
-        public void pass(bool finish = false)
+        /*
+         * TakenReader:
+         *      不采用两端缓存，直接将文件读入大数组
+         *  @TEST PASSED
+         * */
+        internal class TakenReader : ITakenReader
         {
-            startPos = (finish) ? endPos : endPos - 1;
-        }
+            // private static ILog logger = LogManager.
+            //   GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+            //流式读取
+            private readonly long streamLength;
+            private int startPos;
+            private int endPos;//当前已流过字节的之后一个字节
+            private readonly char[] buf;//流
 
+            public long Length => streamLength;
+            public TakenReader(char[] data)
+            {
+                buf = data;
+                streamLength = buf.Length;
+                startPos = endPos = 0;
+
+            }
+
+            public char? Next()
+            {
+                char? ch = null;
+                // 应该使用buf.length而不是fileLength
+                if (streamLength > 0 && streamLength != endPos)
+                {
+                    ch = new char?(buf[endPos]);
+                    endPos++;
+                }
+                return ch;
+            }
+            public bool HasNext() { return streamLength > 0 && streamLength != endPos; }
+
+            public string GetWord(bool finish = false)
+            {
+                string word = null;
+                char[] result = null;
+                if (streamLength > 0 && startPos != endPos)
+                {
+                    result = new char[endPos - startPos];
+                    Array.Copy(buf, startPos, result, 0, endPos - startPos);
+                    // 是否返回最后一个字符
+                    word = (!finish && result.Length > 1) ? new string(result).Remove(result.Length - 1) :
+                            new string(result);
+                    // 是否将最后一个字符留在流中
+                    startPos = finish ? endPos : endPos - 1;
+                }
+                return word;
+            }
+            public void Pass(bool finish = false)
+            {
+                startPos = (finish) ? endPos : endPos - 1;
+            }
+
+            public long GetStreamLength()
+            {
+                return streamLength;
+            }
+        }
     }
+
 }
