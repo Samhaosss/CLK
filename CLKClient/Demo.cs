@@ -11,13 +11,20 @@ namespace CLK.Client
 
     class LexerLibUsageDemo
     {
-        public static void SampleLexerTest()
+        public static void SampleSyntaxTest()
         {
             SampleSyntaxParser sampleSyntaxParser = new SampleSyntaxParser();
             while (true)
             {
-                Console.Write("<<");
-                sampleSyntaxParser.Parse(Console.ReadLine().ToArray());
+                try
+                {
+                    Console.Write("<<");
+                    sampleSyntaxParser.Parse(Console.ReadLine().ToArray());
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
             }
         }
         public static void SetupKeyFile()
@@ -34,7 +41,7 @@ namespace CLK.Client
         // takenReader实列
         public static void TakenReaderUsage()
         {
-            ITakenReader takenReader = TakenReaderFactory.GetFromFile(System.Environment.
+            ITokenReader takenReader = TokenReaderFactory.GetFromFile(System.Environment.
                 GetEnvironmentVariable("CLK_HOME") + @"\GlobalConfig\keywords"); ;
             List<string> takens = new List<string>();
             while (takenReader.HasNext())
@@ -70,7 +77,7 @@ namespace CLK.Client
             long lastLine = 1;
             while (true)
             {
-                var taken = sampleLexer.Analyze();
+                var taken = sampleLexer.Next();
                 if (taken.RowNo != lastLine)
                 {
                     System.Console.WriteLine($"    =>Line:{lastLine}");
@@ -91,8 +98,9 @@ namespace CLK.Client
         static void Main(string[] args)
         {
             SetupEnv();
+            SampleSyntaxTest();
             //SetupKeyFile();
-            SampleLexerTest();
+            //SampleLexerTest();
             //TakenReaderUsage();
             //SampleLexerAsIter(@"C:\Users\sam\source\repos\CLK\LexicalCore\TakenReader.cs");
             //SampleLexerUsage(@"C:\Users\sam\source\repos\CLK\LexicalCore\TakenReader.cs");

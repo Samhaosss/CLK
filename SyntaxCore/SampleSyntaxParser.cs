@@ -10,59 +10,98 @@ namespace CLK.SyntaxCore
     public class SampleSyntaxParser
     {
         private EnumerableWord sampleLexer;
+        private Taken lastWord;
         public SampleSyntaxParser()
         {
         }
-
+        private void NextWord()
+        {
+            lastWord = sampleLexer.Next();
+        }
         public void Parse(char[] data)
         {
-            sampleLexer = SampleLexer.parse(data);
+            sampleLexer = SampleLexer.Parse(data);
+            NextWord();
             Console.WriteLine($"Result: {ProcE()}");
+        }
+        private int ProL()
+        {
+            int el = ProcE();
+            return el;
         }
         public int ProcE()
         {
-            int es = 0;
-            es = ProcT();
-            if (sampleLexer.Analyze().Value.Equals('+'))
-            {
-                es += ProcE();
-            }
+            int es, mi, ts;
+            ts = ProcT();
+            mi = ts;
+            es = ProcM(mi);
             return es;
         }
-        public int ProcT()
+        private int ProcM(int mi)
         {
             int ts = 0;
-            ts = ProcF();
-            if (sampleLexer.Analyze().Value.Equals('*'))
+            if (lastWord.Type == TakenType.Op && lastWord.Value.Equals("+"))
             {
-                ts *= ProcT();
-            }
-
-            return ts;
-        }
-        int ProcF()
-        {
-            Taken tmp = sampleLexer.Analyze();
-            int fs = 0;
-
-            if (tmp.Value.Equals('('))
-            {
-                fs = ProcE();
-                if (!sampleLexer.Analyze().Value.Equals(')'))
-                {
-                    throw new System.NotImplementedException("Error Handling");
-                }
-
-            }
-            else if (tmp.Type == TakenType.Num)
-            {
-                fs = int.Parse(tmp.Value);
+                NextWord(); //消耗了一个单词 继续获取
+                ts = ProcT();
+                mi += ts;
+                return ProcM(mi);
             }
             else
             {
+                return mi;
+            }
+        }
+        public int ProcT()
+        {
+            int ni = 0;
+            ni = ProcF();
+            return ProcN(ni);
+        }
+        int ProcN(int ni)
+        {
+            if (lastWord.Type == TakenType.Op && lastWord.Value.Equals("*"))
+            {
+                NextWord();
+                ni *= ProcF();
+                return ProcN(ni);
+            }
+            return ni;
+        }
+        int ProcF()
+        {
+            int fs = 0;
+            if (lastWord.Type == TakenType.DelimiterChars && lastWord.Value.Equals("("))
+            {
+                NextWord();
+                fs = ProcE();
+                if (!(lastWord.Type == TakenType.DelimiterChars && lastWord.Value.Equals(")")))
+                {
+                    Console.Error.WriteLine($"括号不匹配:{lastWord.RowNo}:{lastWord.ColNo}");
+                    throw new System.NotImplementedException("Error Handling");
+                }
+                NextWord();
+                return fs;
+
+            }
+            else if (lastWord.Type == TakenType.IntegerLiteral)
+            {
+                int tmp = int.Parse(lastWord.Value);
+                NextWord();
+                return tmp;
+            }
+            else if (lastWord.Type == TakenType.FloatLiteral)
+            {
+                int tmp = (int)float.Parse(lastWord.Value); ;
+                NextWord();
+                return tmp;
+            }
+            else
+            {
+
+                Console.Error.WriteLine($"表达式不符合文法定义:{lastWord.RowNo}:{lastWord.ColNo}");
                 throw new System.NotImplementedException("Error Handling");
             }
-            return fs;
         }
     }
 }
