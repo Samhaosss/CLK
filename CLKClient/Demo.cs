@@ -1,5 +1,6 @@
 ﻿using CLK.LexicalCore.DemoLexer;
 using CLK.SyntaxCore;
+using CLK.util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,39 @@ namespace CLK.Client
 
     class LexerLibUsageDemo
     {
+        public static void GrammarTest()
+        {
+            Nonterminals GE = new Nonterminals("GE");
+            Nonterminals Structure = new Nonterminals("Stucture");
+            Terminals Sp = new Terminals("=>");
+            Terminals Or = new Terminals("|");
+            Nonterminals GEP = new Nonterminals("GEP");
+            Terminals None = new Terminals("$");
+            Nonterminals T = new Nonterminals("T");
+            Nonterminals NT = new Nonterminals("NT");
+            Nonterminals STP = new Nonterminals("STP");
+            Nonterminals TP = new Nonterminals("TP");
+            Nonterminals NTP = new Nonterminals("NTP");
+            Nonterminals BigCase = new Nonterminals("BigCase");
+            Nonterminals SmallCase = new Nonterminals("SmallCase");
+
+            List<GrammarProduction> grammarProductions = new List<GrammarProduction>
+            {
+                new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{GE}),new List<GrammarStructure>{
+                                          new GrammarStructure( new List<IGrammarSymbol>{Structure,Sp, Structure, GEP})}),
+
+                new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{ GEP}),
+                                        new List<GrammarStructure>{new GrammarStructure(new List<IGrammarSymbol> {Or, Structure,GEP }),
+                                            new GrammarStructure(new List<IGrammarSymbol> { None })}),
+            };
+            Grammar grammar = new Grammar(grammarProductions);
+            foreach (var tmp in grammar.Nonterminals)
+            {
+                Console.WriteLine($"{tmp}");
+            }
+
+
+        }
         public static void SampleSyntaxTest()
         {
             SampleSyntaxParser sampleSyntaxParser = new SampleSyntaxParser();
@@ -98,9 +132,9 @@ namespace CLK.Client
         static void Main(string[] args)
         {
             SetupEnv();
-            SampleSyntaxTest();
+            //SampleSyntaxTest();
+            GrammarTest();
             //SetupKeyFile();
-            //SampleLexerTest();
             //TakenReaderUsage();
             //SampleLexerAsIter(@"C:\Users\sam\source\repos\CLK\LexicalCore\TakenReader.cs");
             //SampleLexerUsage(@"C:\Users\sam\source\repos\CLK\LexicalCore\TakenReader.cs");
