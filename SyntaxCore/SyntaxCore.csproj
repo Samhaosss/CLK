@@ -44,6 +44,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AlgCore.cs" />
     <Compile Include="GrammerUtility.cs" />
     <Compile Include="SampleSyntaxParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

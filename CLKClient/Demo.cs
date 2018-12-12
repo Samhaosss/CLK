@@ -12,6 +12,30 @@ namespace CLK.Client
 
     class LexerLibUsageDemo
     {
+        public static void Print<T>(IEnumerable<T> data)
+        {
+            foreach (T d in data)
+            {
+                Console.Write(d);
+            }
+            Console.Write("\n");
+        }
+        // grammar相关数据结构的用法
+        public static void GrammarDSUsage()
+        {
+
+            // 终结符号之间需要空格分割 因为可能希望出现'dight'这样终结符
+            GrammarStructure test = new GrammarStructure("A s");// 包含A s两个文法符号,A为非终结 s 为终结
+            GrammarStructure test2 = new GrammarStructure("");//空产生式的部分
+            GrammarStructure test3 = new GrammarStructure("  s555 ss   "); // s555 ss两个非终结符号
+
+            GrammarProduction production = new GrammarProduction("A", "a A|b B");
+            GrammarProduction production2 = new GrammarProduction("a B", "b B| C");
+            GrammarProduction production3 = new GrammarProduction("C", "c");
+            Grammar grammar = new Grammar(new List<GrammarProduction> { production, production2, production3 });
+            Console.WriteLine(grammar);
+        }
+        // 暴力创建文法, 这里会抛异常，因为构建的文法不合法
         public static void GrammarTest()
         {
             Nonterminals GE = new Nonterminals("GE");
@@ -27,7 +51,6 @@ namespace CLK.Client
             Nonterminals NTP = new Nonterminals("NTP");
             Nonterminals BigCase = new Nonterminals("BigCase");
             Nonterminals SmallCase = new Nonterminals("SmallCase");
-
             List<GrammarProduction> grammarProductions = new List<GrammarProduction>
             {
                 new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{GE}),new List<GrammarStructure>{
@@ -38,12 +61,7 @@ namespace CLK.Client
                                             new GrammarStructure(new List<IGrammarSymbol> { None })}),
             };
             Grammar grammar = new Grammar(grammarProductions);
-            foreach (var tmp in grammar.Nonterminals)
-            {
-                Console.WriteLine($"{tmp}");
-            }
-
-
+            Console.WriteLine(grammar);
         }
         public static void SampleSyntaxTest()
         {
@@ -132,8 +150,9 @@ namespace CLK.Client
         static void Main(string[] args)
         {
             SetupEnv();
+            GrammarDSUsage();
             //SampleSyntaxTest();
-            GrammarTest();
+            //GrammarTest();
             //SetupKeyFile();
             //TakenReaderUsage();
             //SampleLexerAsIter(@"C:\Users\sam\source\repos\CLK\LexicalCore\TakenReader.cs");
