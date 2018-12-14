@@ -389,11 +389,11 @@ namespace CLK.util
         //          文法正确性
         // 
         // 所有产生式
-        private readonly List<GrammarProduction> grammarProductions;
-        private Nonterminals startNonterminalSymbol;//开始符号
-        private HashSet<Nonterminals> nonterminals;
-        private HashSet<Terminals> terminals;
-        private readonly GrammarType grammarType;
+        protected readonly List<GrammarProduction> grammarProductions;
+        protected Nonterminals startNonterminalSymbol;//开始符号
+        protected HashSet<Nonterminals> nonterminals;
+        protected HashSet<Terminals> terminals;
+        protected readonly GrammarType grammarType;
         public Nonterminals StartNonterminalSymbol { get => startNonterminalSymbol; }
         public List<GrammarProduction> GrammarProductions => grammarProductions;
         public HashSet<Nonterminals> Nonterminals => nonterminals;
@@ -416,7 +416,7 @@ namespace CLK.util
             InitSet();//合并终结符 非终结符号
             if (!GrammarValidate())
             {
-                throw new IllegalGrammarException("输入文法异常，必须确保所有的非终结符出现在某个文法产生式的左部");
+                throw new IllegalGrammarException("不符合文法定义：输入文法异常，必须确保所有的非终结符出现在某个文法产生式的左部");
             }
             grammarType = GType();
         }
@@ -543,6 +543,20 @@ namespace CLK.util
             }
             string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}";
             return grammarStr;
+        }
+    }
+
+    public class CSG : Grammar
+    {
+        public CSG(List<GrammarProduction> grammarProductions, Nonterminals startNonterminalSymbol = null) :
+            base(grammarProductions, startNonterminalSymbol)
+        {
+            // 文法合法性交给父类判断，这里只要保证不是零型文法即可
+            // 不能限制到上下文有关文法 因为上下文无关、正则文法都是上下文有关文法
+            if (grammarType == GrammarType.ZeroType)
+            {
+                throw new IllegalGrammarException("文法不符合上下文有关文法定义");
+            }
         }
     }
 
