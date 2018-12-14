@@ -29,8 +29,8 @@ namespace CLK.Client
             GrammarStructure test2 = new GrammarStructure("");//空产生式的部分
             GrammarStructure test3 = new GrammarStructure("  s555 ss   "); // s555 ss两个非终结符号
 
-            GrammarProduction production = new GrammarProduction("A", "a A|b B");
-            GrammarProduction production2 = new GrammarProduction("a B", "b B| C");
+            GrammarProduction production = new GrammarProduction("A", "a A|b B| a A | b B");
+            GrammarProduction production2 = new GrammarProduction("B", "b A B| C");
             GrammarProduction production3 = new GrammarProduction("C", "c");
             Grammar grammar = new Grammar(new List<GrammarProduction> { production, production2, production3 });
             Console.WriteLine(grammar);
@@ -51,17 +51,17 @@ namespace CLK.Client
             Nonterminals NTP = new Nonterminals("NTP");
             Nonterminals BigCase = new Nonterminals("BigCase");
             Nonterminals SmallCase = new Nonterminals("SmallCase");
-            List<GrammarProduction> grammarProductions = new List<GrammarProduction>
-            {
-                new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{GE}),new List<GrammarStructure>{
-                                          new GrammarStructure( new List<IGrammarSymbol>{Structure,Sp, Structure, GEP})}),
+            //          List<GrammarProduction> grammarProductions = new List<GrammarProduction>
+            //          {
+            //                new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{GE}),new List<GrammarStructure>{
+            //                                        new GrammarStructure( new List<IGrammarSymbol>{Structure,Sp, Structure, GEP})}),
 
-                new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{ GEP}),
-                                        new List<GrammarStructure>{new GrammarStructure(new List<IGrammarSymbol> {Or, Structure,GEP }),
-                                            new GrammarStructure(new List<IGrammarSymbol> { None })}),
-            };
-            Grammar grammar = new Grammar(grammarProductions);
-            Console.WriteLine(grammar);
+            //              new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{ GEP}),
+            //                                       new List<GrammarStructure>{new GrammarStructure(new List<IGrammarSymbol> {Or, Structure,GEP }),
+            ///                                         new GrammarStructure(new List<IGrammarSymbol> { None })}),
+            //         };
+            //        Grammar grammar = new Grammar(grammarProductions);
+            //       Console.WriteLine(grammar);
         }
         public static void SampleSyntaxTest()
         {

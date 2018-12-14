@@ -45,7 +45,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AlgCore.cs" />
+    <Compile Include="CFG.cs" />
     <Compile Include="GrammerUtility.cs" />
+    <Compile Include="RG.cs" />
     <Compile Include="SampleSyntaxParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
