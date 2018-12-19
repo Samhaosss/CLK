@@ -23,46 +23,55 @@ namespace CLK.Client
         // grammar相关数据结构的用法
         public static void GrammarDSUsage()
         {
+            // 完整的文法
+            GrammarProduction production = new GrammarProduction("A", "    a A |  B b | C c");
+            GrammarProduction production2 = new GrammarProduction("B", " b B | d D | A ");
+            GrammarProduction production3 = new GrammarProduction("C", "  c  ");
+            GrammarProduction production4 = new GrammarProduction("D", " d D |  a A | e B | d E");
+            GrammarProduction production5 = new GrammarProduction("E", " a A |  a D | e ");
+            SymbolIter symbolIter = new SymbolIter("aaaabbbbdddddaaaaaacc");
+            CFG grammar = new CFG(new List<GrammarProduction> { production, production2, production3, production4, production5 });
 
-            // 终结符号之间需要空格分割 因为可能希望出现'dight'这样终结符
-            GrammarStructure test = new GrammarStructure("A s");// 包含A s两个文法符号,A为非终结 s 为终结
-            GrammarStructure test2 = new GrammarStructure("");//空产生式的部分
-            GrammarStructure test3 = new GrammarStructure("  s555 ss   "); // s555 ss两个非终结符号
+            Console.WriteLine($"grammar:{grammar}");
+            var fst = grammar.GetFirstOfStructure();
+            var first = grammar.GetFirstOfNonterminals();
+            var follow = grammar.GetFollow();
+            PrintDic(first, "First");
+            PrintDic(fst, "Structure");
+            PrintDic(follow, "Follow");
+            // 左递归判断
+            if (grammar.IsLeftRecursive())
+            {
+                Console.WriteLine("grammar is left recursive");
+            }
+            grammar.EliminateCommonRecursive();
+            Console.WriteLine("EliminateCR:\n" + grammar);
+            // 递归下降分析
+            Console.WriteLine($"TEST:{symbolIter}");
+            if (grammar.RecursiveAnalyze(symbolIter))
+            {
+                Console.WriteLine($"{symbolIter} is the sentence of Grammar");
+            }
+            else
+            {
+                Console.WriteLine($"{symbolIter} is not the  sentence of Grammar");
+            }
 
-            GrammarProduction production = new GrammarProduction("A", "a A|b B| a A | b B");
-            GrammarProduction production2 = new GrammarProduction("B", "b A B| C");
-            GrammarProduction production3 = new GrammarProduction("C", "c");
-            Grammar grammar = new Grammar(new List<GrammarProduction> { production, production2, production3 });
-            Console.WriteLine(grammar);
         }
-        // 暴力创建文法, 这里会抛异常，因为构建的文法不合法
-        public static void GrammarTest()
+        public static void PrintDic<C, V>(Dictionary<C, HashSet<V>> dic, String prefix)
         {
-            Nonterminals GE = new Nonterminals("GE");
-            Nonterminals Structure = new Nonterminals("Stucture");
-            Terminals Sp = new Terminals("=>");
-            Terminals Or = new Terminals("|");
-            Nonterminals GEP = new Nonterminals("GEP");
-            Terminals None = new Terminals("$");
-            Nonterminals T = new Nonterminals("T");
-            Nonterminals NT = new Nonterminals("NT");
-            Nonterminals STP = new Nonterminals("STP");
-            Nonterminals TP = new Nonterminals("TP");
-            Nonterminals NTP = new Nonterminals("NTP");
-            Nonterminals BigCase = new Nonterminals("BigCase");
-            Nonterminals SmallCase = new Nonterminals("SmallCase");
-            //          List<GrammarProduction> grammarProductions = new List<GrammarProduction>
-            //          {
-            //                new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{GE}),new List<GrammarStructure>{
-            //                                        new GrammarStructure( new List<IGrammarSymbol>{Structure,Sp, Structure, GEP})}),
-
-            //              new GrammarProduction(new GrammarStructure(new List<IGrammarSymbol>{ GEP}),
-            //                                       new List<GrammarStructure>{new GrammarStructure(new List<IGrammarSymbol> {Or, Structure,GEP }),
-            ///                                         new GrammarStructure(new List<IGrammarSymbol> { None })}),
-            //         };
-            //        Grammar grammar = new Grammar(grammarProductions);
-            //       Console.WriteLine(grammar);
+            Console.WriteLine(prefix);
+            foreach (var fi in dic)
+            {
+                Console.Write($"{fi.Key} => [");
+                foreach (var key in fi.Value)
+                {
+                    Console.Write($" {key}");
+                }
+                Console.WriteLine(" ]");
+            }
         }
+
         public static void SampleSyntaxTest()
         {
             SampleSyntaxParser sampleSyntaxParser = new SampleSyntaxParser();

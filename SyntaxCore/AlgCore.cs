@@ -12,8 +12,8 @@ namespace SyntaxCore
      * FollowSet => KeySet<Nonterminals,Terminals>
      * **/
 
-    using FirstSet = KeySet<GrammarStructure, Terminals>;
-    using FollowSet = KeySet<Nonterminals, Terminals>;
+    using FirstSet = KeySet<GrammarStructure, Terminal>;
+    using FollowSet = KeySet<Nonterminal, Terminal>;
     public class KeySet<T, V>
     {
         private T key;
@@ -51,23 +51,23 @@ namespace SyntaxCore
 
     public class PredictionTableItem
     {
-        private HashSet<Tuple<Terminals, GrammarProduction>> item;
-        public HashSet<Tuple<Terminals, GrammarProduction>> Item { get => item; set => item = value; }
+        private HashSet<Tuple<Terminal, GrammarProduction>> item;
+        public HashSet<Tuple<Terminal, GrammarProduction>> Item { get => item; set => item = value; }
 
-        public PredictionTableItem() { item = new HashSet<Tuple<Terminals, GrammarProduction>>(); }
-        public void Add(Tuple<Terminals, GrammarProduction> tuple) { item.Add(tuple); }
-        public void Delete(Tuple<Terminals, GrammarProduction> tuple) { item.Remove(tuple); }
+        public PredictionTableItem() { item = new HashSet<Tuple<Terminal, GrammarProduction>>(); }
+        public void Add(Tuple<Terminal, GrammarProduction> tuple) { item.Add(tuple); }
+        public void Delete(Tuple<Terminal, GrammarProduction> tuple) { item.Remove(tuple); }
     }
     public class PredictionAnalysisTable
     {
-        private Dictionary<Nonterminals, PredictionTableItem> table;
+        private Dictionary<Nonterminal, PredictionTableItem> table;
 
         public PredictionAnalysisTable()
         {
-            table = new Dictionary<Nonterminals, PredictionTableItem>();
+            table = new Dictionary<Nonterminal, PredictionTableItem>();
         }
         // 增加一整行到table
-        public void Add(Nonterminals key, PredictionTableItem value)
+        public void Add(Nonterminal key, PredictionTableItem value)
         {
             PredictionTableItem item;
             if (!table.TryGetValue(key, out item))
@@ -83,7 +83,7 @@ namespace SyntaxCore
         {
             throw new NotImplementedException("First集算法未完成");
         }
-        public static FollowSet Follow(Grammar grammar, Nonterminals nonterminals)
+        public static FollowSet Follow(Grammar grammar, Nonterminal nonterminals)
         {
             throw new NotImplementedException("First集算法未完成");
         }

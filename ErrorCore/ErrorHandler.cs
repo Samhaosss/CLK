@@ -52,4 +52,15 @@ namespace ErrorCore
         public IllegalGrammarException(System.Runtime.Serialization.SerializationInfo info,
         System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
     }
+    /// <summary>
+    /// 非法的文法单元
+    /// </summary>
+    public class IllegalStructureException : System.Exception
+    {
+        public IllegalStructureException(string msg) : base(msg) { }
+        public IllegalStructureException() : base() { }
+        public IllegalStructureException(string message, System.Exception inner) : base(message, inner) { }
+        public IllegalStructureException(System.Runtime.Serialization.SerializationInfo info,
+        System.Runtime.Serialization.StreamingContext context) : base(info, context) { }
+    }
 }
