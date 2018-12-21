@@ -4,9 +4,7 @@ using CLK.SyntaxCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-/*
-* 将来这个模块应该被改为winform程序，目前只是控制台应用程序，仅仅用于展示库用法
-* **/
+
 namespace CLK.Client
 {
 
@@ -23,14 +21,14 @@ namespace CLK.Client
         // grammar相关数据结构的用法
         public static void GrammarDSUsage()
         {
-            // 完整的文法
-            GrammarProduction production = new GrammarProduction("A", "     A a |  b B  | C c");
-            GrammarProduction production2 = new GrammarProduction("B", " b B | d D |^ ");
-            GrammarProduction production3 = new GrammarProduction("C", "  c ");
-            GrammarProduction production4 = new GrammarProduction("D", " d D |  a A | e B | c E");
-            GrammarProduction production5 = new GrammarProduction("E", " a A |  d D | e ");
+            // 清华大学出版社 《编译原理》： 文法4.4
+            GrammarProduction production = new GrammarProduction("E", "  T E' | ");
+            GrammarProduction production2 = new GrammarProduction("T", " F T'  ");
+            GrammarProduction production3 = new GrammarProduction("T'", "  + F T'|^ ");
+            GrammarProduction production4 = new GrammarProduction("F", "  ( E )  |  id ");
+            GrammarProduction production5 = new GrammarProduction("E'", "  * T E'  | ^ ");
 
-            SymbolIter symbolIter = new SymbolIter("aaaabbbbdddddaaaaaacc");
+            SymbolIter symbolIter = new SymbolIter(new List<Terminal> { });
 
             CFG grammar = new CFG(new List<GrammarProduction> { production, production2, production3, production4, production5 });
             CFG newG = grammar.EliminateRecursive(); ;

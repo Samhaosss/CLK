@@ -208,20 +208,13 @@ namespace CLK.GrammarDS
                 var symbols = structureInString.Split(delem);
                 foreach (var sym in symbols)
                 {
-                    if (sym.Length > 0 && char.IsLetter(sym[0]))
+                    if (sym.Length > 0 && char.IsLetter(sym[0]) && !char.IsLower(sym[0]))
                     {
-                        if (char.IsLower(sym[0]))
-                        {
-                            structure.Add(new Terminal(sym));
-                        }
-                        else
-                        {
-                            structure.Add(new Nonterminal(sym));
-                        }
+                        structure.Add(new Nonterminal(sym));
                     }
-                    else if (sym.Length > 0 && sym[0] == GrammarSymbol.empty)
+                    else if (sym.Length > 0)
                     {
-                        structure.Add(Terminal.Empty);
+                        structure.Add(new Terminal(sym));
                     }
                     else
                     {
@@ -470,7 +463,11 @@ namespace CLK.GrammarDS
             {
                 foreach (var stc in right.Split(delma))
                 {
-                    rightStructures.Add(new GrammarStructure(stc));
+                    if (!stc.Equals(""))
+                    {
+                        rightStructures.Add(new GrammarStructure(stc));
+                    }
+
                 }
             }
             else

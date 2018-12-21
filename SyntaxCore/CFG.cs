@@ -610,6 +610,7 @@ namespace CLK.GrammarDS
                 {
                     foreach (var ter in terminals)
                     {
+                        if (ter.Equals(Terminal.GetEmpty())) { continue; }
                         if (firstSet[stc].Contains(ter))
                         {
                             if (llDs[kv.Key].ContainsKey(ter))
@@ -671,7 +672,10 @@ namespace CLK.GrammarDS
                 interExp.Columns.Add("Nonterminals", typeof(Nonterminal));
                 foreach (var t in fatherGrammar.Terminals)
                 {
-                    interExp.Columns.Add(t.ToString(), typeof(GrammarStructure));
+                    if (!t.Equals(Terminal.GetEmpty()))
+                    {
+                        interExp.Columns.Add(t.ToString(), typeof(GrammarStructure));
+                    }
                 }
                 interExp.Columns.Add(Terminal.End.ToString(), typeof(GrammarStructure));
                 foreach (var kv in table)
