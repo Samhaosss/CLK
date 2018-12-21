@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28010.2050
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LexicalCore", "LexicalCore\LexicalCore.csproj", "{8F7E5BB9-8748-423C-9130-D6EF127284D3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoInterpreter", "LexicalCore\DemoInterpreter.csproj", "{8F7E5BB9-8748-423C-9130-D6EF127284D3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SyntaxCore", "SyntaxCore\SyntaxCore.csproj", "{73B073DF-883B-41FB-B30A-FDBB25094953}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrammarCore", "SyntaxCore\GrammarCore.csproj", "{73B073DF-883B-41FB-B30A-FDBB25094953}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTest", "UnitTest\UnitTest.csproj", "{8888C2D8-EA20-4375-95C8-0B808F46F527}"
 EndProject

@@ -1,6 +1,6 @@
-﻿using CLK.LexicalCore.DemoLexer;
+﻿using CLK.GrammarDS;
+using CLK.LexicalCore.DemoLexer;
 using CLK.SyntaxCore;
-using CLK.util;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,31 +24,38 @@ namespace CLK.Client
         public static void GrammarDSUsage()
         {
             // 完整的文法
-            GrammarProduction production = new GrammarProduction("A", "    a A |  B b | C c");
-            GrammarProduction production2 = new GrammarProduction("B", " b B | d D | A ");
-            GrammarProduction production3 = new GrammarProduction("C", "  c  ");
-            GrammarProduction production4 = new GrammarProduction("D", " d D |  a A | e B | d E");
-            GrammarProduction production5 = new GrammarProduction("E", " a A |  a D | e ");
-            SymbolIter symbolIter = new SymbolIter("aaaabbbbdddddaaaaaacc");
-            CFG grammar = new CFG(new List<GrammarProduction> { production, production2, production3, production4, production5 });
+            GrammarProduction production = new GrammarProduction("A", "     A a |  b B  | C c");
+            GrammarProduction production2 = new GrammarProduction("B", " b B | d D |^ ");
+            GrammarProduction production3 = new GrammarProduction("C", "  c ");
+            GrammarProduction production4 = new GrammarProduction("D", " d D |  a A | e B | c E");
+            GrammarProduction production5 = new GrammarProduction("E", " a A |  d D | e ");
 
-            Console.WriteLine($"grammar:{grammar}");
-            var fst = grammar.GetFirstOfStructure();
-            var first = grammar.GetFirstOfNonterminals();
-            var follow = grammar.GetFollow();
+            SymbolIter symbolIter = new SymbolIter("aaaabbbbdddddaaaaaacc");
+
+            CFG grammar = new CFG(new List<GrammarProduction> { production, production2, production3, production4, production5 });
+            CFG newG = grammar.EliminateRecursive(); ;
+            if (grammar.IsLeftRecursive())
+            {
+                Console.WriteLine("Grammar is LeftRecursive,eliminate it  ");
+            }
+            Console.WriteLine($"Origin grammar:{grammar}");
+            Console.WriteLine($"New grammar:{newG}");
+
+            var fst = newG.GetFirstSetOfStructure();
+            var first = newG.GetFirstSetOfNonterminals();
+            var follow = newG.GetFollow();
             PrintDic(first, "First");
             PrintDic(fst, "Structure");
             PrintDic(follow, "Follow");
             // 左递归判断
-            if (grammar.IsLeftRecursive())
+            if (newG.IsLeftRecursive())
             {
                 Console.WriteLine("grammar is left recursive");
             }
-            grammar.EliminateCommonRecursive();
-            Console.WriteLine("EliminateCR:\n" + grammar);
+            Console.WriteLine("EliminateCR:");
             // 递归下降分析
             Console.WriteLine($"TEST:{symbolIter}");
-            if (grammar.RecursiveAnalyze(symbolIter))
+            if (newG.RecursiveAnalyze(symbolIter))
             {
                 Console.WriteLine($"{symbolIter} is the sentence of Grammar");
             }
@@ -56,6 +63,7 @@ namespace CLK.Client
             {
                 Console.WriteLine($"{symbolIter} is not the  sentence of Grammar");
             }
+            newG.GetPATable().Print();
 
         }
         public static void PrintDic<C, V>(Dictionary<C, HashSet<V>> dic, String prefix)

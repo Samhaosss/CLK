@@ -1,4 +1,4 @@
-﻿using CLK.util;
+﻿using CLK.GrammarDS;
 using System;
 using System.Collections.Generic;
 namespace SyntaxCore

@@ -52,6 +52,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CFGTest.cs" />
     <Compile Include="DemoLexerUnitTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -59,13 +60,13 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\LexicalCore\LexicalCore.csproj">
+    <ProjectReference Include="..\LexicalCore\DemoInterpreter.csproj">
       <Project>{8f7e5bb9-8748-423c-9130-d6ef127284d3}</Project>
-      <Name>LexicalCore</Name>
+      <Name>DemoInterpreter</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SyntaxCore\SyntaxCore.csproj">
+    <ProjectReference Include="..\SyntaxCore\GrammarCore.csproj">
       <Project>{73b073df-883b-41fb-b30a-fdbb25094953}</Project>
-      <Name>SyntaxCore</Name>
+      <Name>GrammarCore</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />

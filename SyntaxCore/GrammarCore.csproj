@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{8F7E5BB9-8748-423C-9130-D6EF127284D3}</ProjectGuid>
+    <ProjectGuid>{73B073DF-883B-41FB-B30A-FDBB25094953}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>LexicalCore</RootNamespace>
-    <AssemblyName>LexicalCore</AssemblyName>
+    <RootNamespace>SyntaxCore</RootNamespace>
+    <AssemblyName>SyntaxCore</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -31,9 +31,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
-      <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -47,8 +44,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="SampleLexer.cs" />
-    <Compile Include="TokenReader.cs" />
+    <Compile Include="AlgCore.cs" />
+    <Compile Include="CFG.cs" />
+    <Compile Include="CFGParser.cs" />
+    <Compile Include="GrammerUtility.cs" />
+    <Compile Include="PrintDataExtensions.cs" />
+    <Compile Include="RG.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -58,6 +59,10 @@
     <ProjectReference Include="..\ErrorCore\ErrorCore.csproj">
       <Project>{8dd58462-39ac-4b43-9adb-b3197b63ffb7}</Project>
       <Name>ErrorCore</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\LexicalCore\DemoInterpreter.csproj">
+      <Project>{8f7e5bb9-8748-423c-9130-d6ef127284d3}</Project>
+      <Name>DemoInterpreter</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -1,15 +1,15 @@
 ﻿using ErrorCore;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Linq;
-
-namespace CLK.util
+namespace CLK.GrammarDS
 {
+    using CFGrammarDS = Dictionary<Nonterminal, HashSet<GrammarStructure>>;
     using FirstSet = Dictionary<GrammarStructure, HashSet<Terminal>>;
     using FirstSetNT = Dictionary<Nonterminal, HashSet<Terminal>>;
     using FollowSet = Dictionary<Nonterminal, HashSet<Terminal>>;
-    using LLTable = Dictionary<Nonterminal, Dictionary<Terminal, GrammarProduction>>;
-
+    using LLTable = Dictionary<Nonterminal, Dictionary<Terminal, GrammarStructure>>;
     /*
      *  上下文无关文法相关的算法实现在此类内部
      *  这里还缺很多文法变换算法 如消除空产生式、文法规约、消除单产生式、消除直接、间接左递归
@@ -22,7 +22,8 @@ namespace CLK.util
         private FirstSetNT first;   //每个非终结符的first集
         private FirstSet firstSet; //每个文法单元的first集
         private FollowSet follow; //每个非终结符的follow集
-        public static Terminal ENDTERMINAL = new Terminal("$"); //文法默认的分隔符 这里设计还不够实用 需要改进
+        private PredictionAnalysisTable predictionAnalysisTable; //ll分析表
+        public static Terminal ENDTERMINAL = Terminal.End; //文法默认的分隔符 这里设计还不够实用 需要改进
         private new Dictionary<Nonterminal, HashSet<GrammarStructure>> grammarProductions;  // 为方便操作这里故意隐藏了父类实现
         /// <summary>
         /// 从产生式构造上下文无关文法，需要满足文法定义
@@ -36,6 +37,7 @@ namespace CLK.util
             {
                 throw new IllegalGrammarException("文法不符合上下文无关文法定义");
             }
+            // 覆盖父类的内部结构 左部仅仅包含非终结符 这样方便后面操作
             this.grammarProductions = new Dictionary<Nonterminal, HashSet<GrammarStructure>>();
             foreach (var ke in base.grammarProductions.Keys)
             {
@@ -44,6 +46,21 @@ namespace CLK.util
                 this.grammarProductions.Add(nt, base.grammarProductions[ke]);
             }
         }
+
+        //下面是一堆算法实现
+        /****************************************************************************************************************/
+
+        /* 消除无用符号 存在问题
+         * public void EliminateUslessSymbol()
+         {
+             var nts = FindDirectReachable(startNonterminalSymbol);
+             var ntsNotReachAble = nonterminals.Except(nts); //这里需要测试 不确定except究竟是不是想要的返回
+             foreach (var nt in ntsNotReachAble)
+             {
+                 grammarProductions.Remove(nt);
+             }
+         }*/
+
         /// <summary>
         /// 判断文法是否直接或间接左递归
         /// </summary>
@@ -62,7 +79,7 @@ namespace CLK.util
         /// <summary>
         /// 找出某个非终结符所有可达的非终结符
         /// </summary>
-        public HashSet<Nonterminal> FindReachable(Nonterminal target)
+        private HashSet<Nonterminal> FindReachable(Nonterminal target)
         {
             var oldNT = new HashSet<Nonterminal>();
             var newNT = FindDirectReachable(target);
@@ -93,7 +110,7 @@ namespace CLK.util
         /// </summary>
         /// <param name="target"></param>
         /// <returns>如果不含直接可达，则返回空的hashSet</returns>
-        public HashSet<Nonterminal> FindDirectReachable(Nonterminal target)
+        private HashSet<Nonterminal> FindDirectReachable(Nonterminal target)
         {
             var stcs = grammarProductions[target];
             HashSet<Nonterminal> result = new HashSet<Nonterminal>();
@@ -110,13 +127,23 @@ namespace CLK.util
         }
 
         /// <summary>
-        /// 通用消除文法直接、间接左递归算法, 会改变原文法
+        /// 通用消除文法直接、间接左递归算法, 不会改变原文法，返回新的被消除左递归的文法
         /// </summary>
-        public void EliminateCommonRecursive()
+        public CFG EliminateRecursive()
         {
+            // TODO:需要思考是返回一个新文法还是直接修改原文法
+            // 如果修改了内部状态 可能导致用户已经获得的分析表、first集等失效, 因此决定修改为产生新的文法
+
+            if (!IsLeftRecursive())
+            {
+                return this;
+            }
             //将非终结符排序 从前至后，对
             var orderedNT = nonterminals.ToList();
             var len = orderedNT.Count;
+            // 首先保留当前数据
+            CFGrammarDS oldProdutions = DeepCloneDS();
+
             // 将当前非终结符右部文法单元的第一个非终结符替换
             for (int i = 0; i < len; i++)
             {
@@ -146,9 +173,12 @@ namespace CLK.util
                 }
                 EliminateDirectRecursive(currentNT);
             }
+            // 创建新的文法
+            CFG ng = new CFG(ToProductionList(grammarProductions), startNonterminalSymbol);
+            grammarProductions = oldProdutions;
+            return ng;
             //重新生成终结符、非终结符
-            InitSet();
-
+            GenSymbols();
             // TODO: !!!
             // 这里需要重新计算first follow  目前只是简单的重新置为null 随后得仔细考虑
             first = null;
@@ -156,9 +186,33 @@ namespace CLK.util
             follow = null;
         }
         /// <summary>
-        /// 去除某个文法符号产生式的直接左递归
+        /// 将cfg中文法的表示转换为父类中的表示
         /// </summary>
-        /// <param name="target"></param>
+        private List<GrammarProduction> ToProductionList(CFGrammarDS ds)
+        {
+            List<GrammarProduction> nl = new List<GrammarProduction>();
+            foreach (var kv in ds)
+            {
+                nl.Add(new GrammarProduction(new GrammarStructure(kv.Key), kv.Value));
+            }
+            return nl;
+        }
+        private CFGrammarDS DeepCloneDS()
+        {
+            CFGrammarDS newCfg = new CFGrammarDS();
+            foreach (var kv in grammarProductions)
+            {
+                newCfg.Add(kv.Key, new HashSet<GrammarStructure>());
+                foreach (var st in kv.Value)
+                {
+                    newCfg[kv.Key].Add(new GrammarStructure(st.Structure));
+                }
+            }
+            return newCfg;
+        }
+        /// <summary>
+        /// 去除文法符号产生式的直接左递归,仅供内部作为中间过程使用
+        /// </summary>
         private void EliminateDirectRecursive(Nonterminal target)
         {
             // 先获取所有导致左递归的右部单元
@@ -187,7 +241,6 @@ namespace CLK.util
                 }
             }
             grammarProductions.Add(newNt, new HashSet<GrammarStructure> { new GrammarStructure(Terminal.GetEmpty()) });
-
             foreach (var stc in recu)
             {
                 //构造新产生式
@@ -199,8 +252,6 @@ namespace CLK.util
             {
                 stc.AppendNt(newNt);
             }
-            InitSet();
-
         }
         public override string ToString()
         {
@@ -212,7 +263,8 @@ namespace CLK.util
                 {
                     tmp += (right + " | ");
                 }
-                tmp = tmp.Remove(tmp.Length - 1) + "\n";
+                var index = tmp.LastIndexOf('|');
+                tmp = tmp.Remove(index - 1) + "\n";
             }
             string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}";
             return grammarStr;
@@ -220,7 +272,7 @@ namespace CLK.util
         /// <summary>
         /// 获取文法所有右部文法单元的First集
         /// </summary>
-        public FirstSet GetFirstOfStructure()
+        public FirstSet GetFirstSetOfStructure()
         {
             if (firstSet != null)
             {
@@ -248,7 +300,7 @@ namespace CLK.util
         /// 获取文法每个非终结符号First集
         /// </summary>
         /// <returns></returns>
-        public FirstSetNT GetFirstOfNonterminals()
+        public FirstSetNT GetFirstSetOfNonterminals()
         {
             // 懒惰计算
             if (first != null)
@@ -286,7 +338,7 @@ namespace CLK.util
             {
                 foreach (GrammarSymbol sym in stc)
                 {
-                    if (sym.GetSymbolType() == SymbolType.Terminals)
+                    if (sym.GetSymbolType() == SymbolType.Terminal)
                     {
                         first[nt].Add((Terminal)sym);
                         break;
@@ -326,7 +378,7 @@ namespace CLK.util
             var firstSt = new HashSet<Terminal>();
             foreach (GrammarSymbol sym in structure)
             {
-                if (sym.GetSymbolType() == SymbolType.Terminals)
+                if (sym.GetSymbolType() == SymbolType.Terminal)
                 {
                     firstSt.Add((Terminal)sym);
                     break;
@@ -334,7 +386,7 @@ namespace CLK.util
                 else
                 {
                     // 这里调用First() 而不是直接过去first
-                    firstSt.UnionWith(GetFirstOfNonterminals()[(Nonterminal)sym]);
+                    firstSt.UnionWith(GetFirstSetOfNonterminals()[(Nonterminal)sym]);
                     if (!first[(Nonterminal)sym].Contains(Terminal.GetEmpty()))
                     {
                         break;
@@ -382,7 +434,7 @@ namespace CLK.util
                     // 因为没找到迭代的写法 所以这里很丑
                     for (int i = 0; i < strc.Length(); i++)
                     {
-                        if (strc[i].GetSymbolType() == SymbolType.Nonterminals)
+                        if (strc[i].GetSymbolType() == SymbolType.Nonterminal)
                         {
                             Nonterminal current = (Nonterminal)strc[i];
                             int startCount = follow[current].Count;
@@ -408,7 +460,7 @@ namespace CLK.util
                 }
             }
         }
-        protected new void InitSet()
+        protected new void GenSymbols()
         {
             if (nonterminals == null)
             {
@@ -430,15 +482,44 @@ namespace CLK.util
             nonterminals.TrimExcess();
             terminals.TrimExcess();
         }
+        /// <summary>
+        /// 判断文法是否满足 递归调用预测分析程序的要求
+        /// </summary>
+        /// <returns></returns>
+        public bool IsSatisfyPredictionAnalysis()
+        {
+            // 对每个非终结符的右部文法单元 判断每个文法单元的first集两两之间是否由交集
+            GetFirstSetOfStructure();
+            foreach (var nt in nonterminals)
+            {
+                var stcs = grammarProductions[nt].ToList();
+                for (int i = 0; i < stcs.Count - 1; i++)
+                {
+                    var current = stcs[i];
+                    for (int j = i + 1; j < stcs.Count; j++)
+                    {
+                        if (firstSet[current].Any(X => stcs[j].Contains(X)))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
         //递归下降 使用的变量，其他地方绝对不使用
         private SymbolIter internalSymBols = null;
         private Terminal currentTeminal = null;
         /// <summary>
-        /// 通用递归下降分析 要求文法不含左递归，识别过程无需回溯，但一定程度不必严格要求每个first集之间无交集
+        /// 通用递归下降分析 要求文法的那个非终结符的右部文法单元之间first无交集,否则返回false
         /// </summary>
         /// <returns></returns>
         public bool RecursiveAnalyze(SymbolIter symbolIter)
         {
+            if (!IsSatisfyPredictionAnalysis())
+            {
+                return false;
+            }
             internalSymBols = symbolIter ?? throw new System.ArgumentNullException();
             currentTeminal = internalSymBols.Next();
             return DoRecs(startNonterminalSymbol);
@@ -447,63 +528,44 @@ namespace CLK.util
         private bool DoRecs(Nonterminal nt)
         {
             var stcs = FindTargetStuc(nt, currentTeminal); // 获取first集包含currentTerminal的stucture
-            if (stcs == null) //如果不包含这样的右部文法单元 则无需继续分析当前节点
+            // 每次尤其只能有一个文法文法被选来匹配
+            if (stcs == null || stcs.Count != 1)
             {
                 return false;
             }
-            // 尝试可能的产生式
-            foreach (var stc in stcs)
+            var stc = stcs[0];
+            foreach (GrammarSymbol sym in stc)
             {
-                // 方便失配时 还原
-                var count = 0;
-                var flag = internalSymBols.GetRest();
-                var bef = currentTeminal;
-                // 这里可能会出现 多个文法单元匹配 但只返回第一个的情况 还未处理假匹配的可能
-                foreach (GrammarSymbol sym in stc)
+                // 每一步都需要确保 流还未消耗结束
+                if (currentTeminal == null)
                 {
-                    // 每一步都需要确保 流还未消耗结束
-                    if (currentTeminal == null)
+                    return false;
+                }
+                if (sym.GetSymbolType() == SymbolType.Terminal)
+                {
+                    if (sym.Equals(currentTeminal))
                     {
-                        internalSymBols.BackN(count);
-                        currentTeminal = bef;
-                        break;
-                    }
-                    if (sym.GetSymbolType() == SymbolType.Terminals)
-                    {
-                        if (sym.Equals(currentTeminal))
-                        {
-                            currentTeminal = internalSymBols.Next();
-                            count++;
-                            continue;
-                        }
-                        else
-                        {
-                            internalSymBols.BackN(count);
-                            break;
-                        }
+                        currentTeminal = internalSymBols.Next();
                     }
                     else
                     {
-                        if (!DoRecs((Nonterminal)sym))
-                        {
-                            internalSymBols.BackN(count);
-                            break;
-                        }
+                        return false;
                     }
-                }
-                // 当前匹配 且不为开始符号或 为开始符号但流已被消耗完
-                if (internalSymBols.GetRest() != flag && (!nt.Equals(startNonterminalSymbol) ||
-                    (nt.Equals(startNonterminalSymbol) && !internalSymBols.HasNext())))
-                {
-                    return true;
                 }
                 else
                 {
-                    internalSymBols.BackN(count);
-                    currentTeminal = bef;
+                    if (!DoRecs((Nonterminal)sym))
+                    {
+                        return false;
+                    }
                 }
             }
-            return false;
+            // 如果是开始符号被匹配 但流还未消耗结束 则识别失败
+            if (nt.Equals(startNonterminalSymbol) && internalSymBols.HasNext())
+            {
+                return false;
+            }
+            return true;
         }
         /// <summary>
         /// 获取左部文法符号为nt的每个产生式中每个first集中包含终结符t的右部文法单元
@@ -515,7 +577,7 @@ namespace CLK.util
             List<GrammarStructure> target = new List<GrammarStructure>();
             foreach (var stc in grammarProductions[nt])
             {
-                var fi = GetFirstOfStructure()[stc];
+                var fi = GetFirstSetOfStructure()[stc];
                 if (fi.Contains(t))
                 {
                     target.Add(stc);
@@ -524,30 +586,134 @@ namespace CLK.util
             return target.Count == 0 ? null : target;
         }
         //未完成, 目标获取通用LL分析程序
-        public LLProc GenLLProc()
+        /// <summary>
+        /// 获取文法预测分析表
+        /// </summary>
+        /// <returns></returns>
+        public PredictionAnalysisTable GetPATable()
         {
-            GetFirstOfStructure();
-            GetFollow();
-            LLTable tmp = new LLTable();
-            foreach (var nt in nonterminals)
+            if (predictionAnalysisTable != null)
             {
-                tmp.Add(nt, new Dictionary<Terminal, GrammarProduction>());
-                foreach (var stc in grammarProductions[nt])
-                {
-                    var fi = firstSet[stc];
-                    foreach (var ter in fi)
-                    {
-                        tmp[nt].Add(ter, new GrammarProduction(new GrammarStructure(new List<GrammarSymbol> { nt }), new HashSet<GrammarStructure> { stc }));
-                    }
-                    if (fi.Contains(Terminal.GetEmpty()))
-                    {
+                return predictionAnalysisTable;
+            }
 
+            GetFirstSetOfStructure();
+            GetFollow();
+
+            LLTable llDs = new LLTable();
+            foreach (var kv in grammarProductions)
+            {
+                llDs.Add(kv.Key, new Dictionary<Terminal, GrammarStructure>());
+                // 对每个产生式的每个右部文法单元 检查每个终结符是否在当前文法单元的first集 如果不在且first包含空则
+                // 检查当前非终结符的follow集
+                foreach (var stc in kv.Value)
+                {
+                    foreach (var ter in terminals)
+                    {
+                        if (firstSet[stc].Contains(ter))
+                        {
+                            if (llDs[kv.Key].ContainsKey(ter))
+                            {
+                                throw new IllegalGrammarException("尝试为不满足ll(1)文法要求的文法创建ll分析表");
+                            }
+                            else
+                            {
+                                llDs[kv.Key].Add(ter, stc);
+                            }
+                        }
+                        else if (firstSet[stc].Contains(Terminal.Empty) && follow[kv.Key].Contains(ter))
+                        {
+                            llDs[kv.Key].Add(ter, stc);
+                        }
                     }
                 }
             }
-            throw new System.NotImplementedException();
+            predictionAnalysisTable = new PredictionAnalysisTable(llDs, this);
+            return predictionAnalysisTable;
         }
 
+    }
+    /// <summary>
+    /// 预测分析表
+    /// </summary>
+    public class PredictionAnalysisTable
+    {
+
+        private Dictionary<Nonterminal, Dictionary<Terminal, GrammarStructure>> table;
+        private DataTable interExp; //目前仅仅用于好看的打印
+        private CFG fatherGrammar;
+        public PredictionAnalysisTable(LLTable table, CFG fatherGrammar)
+        {
+            this.table = table;
+            this.fatherGrammar = fatherGrammar;
+        }
+        /// <summary>
+        /// 获取表项 如果不存在则返回null
+        /// </summary>
+        /// <param name="row">行索引</param>
+        /// <param name="col">列索引</param>
+        /// <returns>Structure</returns>
+        public GrammarStructure GetItem(Nonterminal row, Terminal col)
+        {
+            return table[row][col];
+        }
+        public Dictionary<Terminal, GrammarStructure> GetLine(Nonterminal row)
+        {
+            return table[row];
+        }
+
+        public void Print()
+        {
+
+            if (interExp == null)
+            {
+                interExp = new DataTable("LLTable");
+                interExp.Columns.Add("Nonterminals", typeof(Nonterminal));
+                foreach (var t in fatherGrammar.Terminals)
+                {
+                    interExp.Columns.Add(t.ToString(), typeof(GrammarStructure));
+                }
+                interExp.Columns.Add(Terminal.End.ToString(), typeof(GrammarStructure));
+                foreach (var kv in table)
+                {
+                    DataRow dataRow = interExp.NewRow();
+                    dataRow["Nonterminals"] = kv.Key;
+                    foreach (var item in kv.Value)
+                    {
+                        dataRow[item.Key.Value] = item.Value;
+                    }
+                    interExp.Rows.Add(dataRow);
+                }
+            }
+            interExp.Print();
+        }
+        /// <summary>
+        /// 返回表格形式
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
+        {
+            if (interExp == null)
+            {
+                interExp = new DataTable("LLTable");
+                interExp.Columns.Add("Nonterminals", typeof(Nonterminal));
+                foreach (var t in fatherGrammar.Terminals)
+                {
+                    interExp.Columns.Add(t.ToString(), typeof(GrammarStructure));
+                }
+                interExp.Columns.Add(Terminal.End.ToString(), typeof(GrammarStructure));
+                foreach (var kv in table)
+                {
+                    DataRow dataRow = interExp.NewRow();
+                    dataRow["Nonterminals"] = kv.Key;
+                    foreach (var item in kv.Value)
+                    {
+                        dataRow[item.Key.Value] = item.Value;
+                    }
+                }
+            }
+            return interExp.ToString();
+        }
     }
     /// <summary>
     /// 终结符流

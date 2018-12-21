@@ -14,39 +14,54 @@ using System.Linq;
 /// 包含构建文法的基本数据结构: 终结符、非终结符、文法单元、单个产生式、文法。
 /// 实现了部分文法相关算法:文法类别判断
 /// </summary>
-namespace CLK.util
+namespace CLK.GrammarDS
 {
 
     /// <summary>
     /// 终结符 非终结符的枚举类型
     /// </summary>
-    public enum SymbolType { Terminals, Nonterminals };
+    public enum SymbolType { Terminal, Nonterminal };
     /// <summary>
-    /// 文法符号，终结符与非终结符的抽象基类
+    /// 文法符号，终结符与非终结符的抽象基类，用于表示文法符号这一抽象概念
     /// </summary>
     public abstract class GrammarSymbol
     {
+        protected internal static char delem = '|';
+        protected internal static char empty = '^';
+        protected internal static char endSper = '$';
+        protected internal static string EmptyTerminal = "^";
         protected string value;
+        /// <summary>
+        /// 获取文法符号类别
+        /// </summary>
         public abstract SymbolType GetSymbolType();
         /// <summary>
-        /// 通过串创建文法符号，不允许串中间包含空格和默认分割符'|'
+        /// 通过串创建文法符号，不允许串中间包含空格和默认分割符'|'和内部用于分割句子的'$'
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">符号值</param>
+        /// <exception cref="IllegalChException">包含非法字符如: ' ' '|' </exception>
         public GrammarSymbol(string value)
         {
             this.value = value.Trim(' ');
-            if (value.Contains(' ') || value.Contains('|'))
+            //空、分割符在解析时会被处理
+            /*//内部不能包含空格或| 否则导致语句混乱
+            if (value.Contains(delem) || value.Contains(empty))
             {
-                throw new IllegalChException("文法符号中不允许包含空格");
-            }
+                throw new IllegalChException($"文法符号:{value}中不允许包含空格或{delem}");
+            }//如果包含$或^则当前输入长度只能为一
+            else if ((value.Contains(endSper) || value.Contains(EmptyTerminal)) && value.Length != 1)
+            {
+                throw new IllegalChException($"文法符号:{value}中不允许包含语句分隔符{delem}或用于表示空的{EmptyTerminal}");
+            }*/
         }
         // 存入hashtable需要的方法
         /// <summary>
-        /// 如果传入非终结符，不会抛出转换异常，而是返回false
+        /// 用于判断文法符号是否相同，首先判断符号类型：终结符或非终结符，
+        /// 相同类型的符号值也相同则返回true
         /// </summary>
         public override bool Equals(object obj)
         {
-            GrammarSymbol sym = (GrammarSymbol)obj;
+            GrammarSymbol sym = obj as GrammarSymbol;
             // 这样允许将非终结符与终结符比较 比较合理
             if (sym.GetSymbolType() != GetSymbolType())
             {
@@ -54,12 +69,19 @@ namespace CLK.util
             }
             return value.Equals(sym.value);
         }
+        /// <summary>
+        /// 根据符号值返回hashcode
+        /// </summary>
+        /// <returns></returns>
         public override int GetHashCode()
         {
             var hashCode = 1927018180;
             hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(value);
             return hashCode;
         }
+        /// <summary>
+        /// 返回文法符号值
+        /// </summary>
         public override string ToString()
         {
             return value;
@@ -70,11 +92,24 @@ namespace CLK.util
     /// </summary>
     public class Terminal : GrammarSymbol
     {
-
-        public static string EmptyValue = "";
+        /// <summary>
+        /// 空字符
+        /// </summary>
+        public static Terminal Empty = new Terminal(EmptyTerminal);
+        /// <summary>
+        /// 分隔符
+        /// </summary>
+        public static Terminal Sperator = new Terminal(delem);
+        /// <summary>
+        /// 语句分隔符
+        /// </summary>
+        public static Terminal End = new Terminal(endSper);
+        /// <summary>
+        /// 获取空字符
+        /// </summary>
         public static Terminal GetEmpty()
         {
-            return new Terminal(EmptyValue);
+            return new Terminal(EmptyTerminal);
         }
 
         public string Value { get => value; }
@@ -88,18 +123,23 @@ namespace CLK.util
         public Terminal(char value) : base(value.ToString())
         {
         }
-        public Terminal() : base(EmptyValue)
+        /// <summary>
+        /// 什么都不传递则返回空字符
+        /// </summary>
+        public Terminal() : base(EmptyTerminal)
         {
         }
-
+        /// <summary>
+        /// 判断是否未空字符
+        /// </summary>
+        /// <returns></returns>
         public bool IsEmpty()
         {
-            return value.Equals(EmptyValue);
+            return value.Equals(EmptyTerminal);
         }
-
         public override SymbolType GetSymbolType()
         {
-            return SymbolType.Terminals;
+            return SymbolType.Terminal;
         }
 
     }
@@ -113,13 +153,9 @@ namespace CLK.util
         {
         }
         public string Value => value;
-        /// <summary>
-        /// 获取符号类别
-        /// </summary>
-        /// <returns>终结符或非终结符</returns>
         public override SymbolType GetSymbolType()
         {
-            return SymbolType.Nonterminals;
+            return SymbolType.Nonterminal;
         }
     }
 
@@ -134,9 +170,8 @@ namespace CLK.util
         private HashSet<Nonterminal> nonterminals;
 
         /// <summary>
-        ///  通过List构造文法单元
+        ///  通过List构造文法单元,将去除list中的多个空字符
         /// </summary>
-        /// <param name="structure">传递Terminal.Empty将创建用于空产生式的部分</param>
         public GrammarStructure(List<GrammarSymbol> structure)
         {
             if (structure == null)
@@ -147,11 +182,14 @@ namespace CLK.util
             {
                 throw new System.ArgumentException("构建文法单元的文法符号列表不可为空");
             }
-            this.structure = structure;
+            //防止用户不小心修改外部list 导致structure内部结构被修改
+            this.structure = new List<GrammarSymbol>(structure);
             //移除文法中多余的空
             RemoveMutiEmpty();
             GenSymbol();
         }
+
+        // TODO: 下面这个方法还需要被检查 并没有处理所有可能输入的串类型
         /// <summary>
         /// 通过字符串创建结构，各个文法符号之间默认通过空格分割，如文法单元'aAb'，需要表示为'a A b',文法单元'dight ch'表示由两个非终结符构成
         /// 符号开头只能是英文字母，大写开头将创建非终结符，小写开头创建终结符
@@ -180,6 +218,10 @@ namespace CLK.util
                         {
                             structure.Add(new Nonterminal(sym));
                         }
+                    }
+                    else if (sym.Length > 0 && sym[0] == GrammarSymbol.empty)
+                    {
+                        structure.Add(Terminal.Empty);
                     }
                     else
                     {
@@ -223,27 +265,13 @@ namespace CLK.util
         }
         private void GenSymbol()
         {
-            if (Terminals == null)
-            {
-                terminals = new HashSet<Terminal>();
-            }
-
-            if (nonterminals == null)
-            {
-                nonterminals = new HashSet<Nonterminal>();
-            }
-            // 将符号分类入终结 非终结 hashset
-            foreach (var syn in structure)
-            {
-                if (syn.GetSymbolType() == SymbolType.Terminals)
-                {
-                    Terminals.Add((Terminal)syn);
-                }
-                else
-                {
-                    nonterminals.Add((Nonterminal)syn);
-                }
-            }
+            // c#的linq 真好用 *_*
+            terminals = new HashSet<Terminal>((from symbol in structure
+                                               where symbol.GetSymbolType() == SymbolType.Terminal
+                                               select symbol as Terminal).ToList());
+            nonterminals = new HashSet<Nonterminal>((from symbol in structure
+                                                     where symbol.GetSymbolType() == SymbolType.Nonterminal
+                                                     select symbol as Nonterminal).ToList());
             terminals.TrimExcess();
             nonterminals.TrimExcess();
             structure.TrimExcess();
@@ -264,7 +292,7 @@ namespace CLK.util
         /// </summary>
         public bool IsStartWithNonterminals()
         {
-            return structure[0].GetSymbolType() == SymbolType.Nonterminals;
+            return structure[0].GetSymbolType() == SymbolType.Nonterminal;
         }
         /// <summary>
         /// 判断是否包含非终结符
@@ -273,6 +301,7 @@ namespace CLK.util
         {
             return nonterminals.Count != 0;
         }
+
         /// <summary>
         /// 判断一个符号是否在当前文法单元
         /// </summary>
@@ -292,8 +321,8 @@ namespace CLK.util
         public int Length() { return structure.Count; }
         public HashSet<Nonterminal> Nonterminals => nonterminals;
         public HashSet<Terminal> Terminals => terminals;
-
-        public List<GrammarSymbol> Structure { get => new List<GrammarSymbol>(structure); }
+        // 这里这样做是为了后面实现上下文无关文法相关算法方便 这样的返回 不会修改当前终结符内部的结构 而文法符号又是不变的所以这么做完全没影响
+        internal List<GrammarSymbol> Structure { get => new List<GrammarSymbol>(structure); }
 
         public override string ToString()
         {
@@ -333,9 +362,15 @@ namespace CLK.util
                 return hashCode;
             }
         }
+        /// <summary>
+        /// 向结尾添加非终结符
+        /// </summary>
+        /// <param name="nt">非终结符</param>
         public GrammarStructure AppendNt(Nonterminal nt)
         {
+            // 这里修改了structure的不变性 但目前看来没问题
             structure.Add(nt);
+            nonterminals.Add(nt);
             return this;
         }
         public IEnumerator GetEnumerator()
@@ -367,15 +402,16 @@ namespace CLK.util
             }
         }
         /// <summary>
-        /// 获取文法单元中第一个非终结符，如果没有则返回null
+        /// 如果文法单元第一个符号为非终结符则返回，否则返回null
         /// </summary>
         /// <returns></returns>
         public Nonterminal GetFirstNT()
         {
-            return structure[0].GetSymbolType() == SymbolType.Nonterminals ? (Nonterminal)structure[0] : null;
+            return structure[0].GetSymbolType() == SymbolType.Nonterminal ? (Nonterminal)structure[0] : null;
         }
+        internal GrammarStructure() { }
     }
-
+    // TODO:structure具有内部不变性但production目前的设计是允许被修改
     /// <summary>
     /// 文法产生式,由一个左部文法单元和一个或多个右部文法单元构成
     /// 可以是乔姆斯基定义的四种文法中的任意一个
@@ -393,6 +429,7 @@ namespace CLK.util
         /// <param name="rightStructures">多个右部文法单元</param>
         public GrammarProduction(GrammarStructure leftStructure, HashSet<GrammarStructure> rightStructures)
         {
+            // 这里在传入时就防止了多个可能重复的右部文法单元
             CheckPara(leftStructure, rightStructures);
             this.leftStructure = leftStructure;
             this.rightStructures = rightStructures;
@@ -417,6 +454,7 @@ namespace CLK.util
         /// <param name="delma">分割多个文法单元的符号，默认为'|'</param>
         public GrammarProduction(string left, string right, char delma = '|')
         {
+            // TODO: 完善从串创建产生式
             leftStructure = new GrammarStructure(left);
             if (!leftStructure.IsContrainNonterminals())
             {
@@ -446,23 +484,14 @@ namespace CLK.util
         // 生成终结符集合与非终结符集
         private void GenSymbols()
         {
-            if (terminals == null)
-            {
-                terminals = new HashSet<Terminal>();
-            }
-
-            if (nonterminals == null)
-            {
-                nonterminals = new HashSet<Nonterminal>();
-            }
-
+            // 选出所有文法单元的终结符hashset 再执行累加 最后加入左部文法单元的终结符
+            var ts = from termi in rightStructures select termi.Terminals;
+            terminals = ts.Aggregate((first, second) => { first.UnionWith(second); return first; });
             terminals.UnionWith(leftStructure.Terminals);
+            var nts = from nt in rightStructures select nt.Nonterminals;
+            nonterminals = nts.Aggregate((first, second) => { first.UnionWith(second); return first; });
             nonterminals.UnionWith(leftStructure.Nonterminals);
-            foreach (var stu in rightStructures)
-            {
-                terminals.UnionWith(stu.Terminals);
-                nonterminals.UnionWith(stu.Nonterminals);
-            }
+            //节省空间
             nonterminals.TrimExcess();
             terminals.TrimExcess();
         }
@@ -471,14 +500,7 @@ namespace CLK.util
         public HashSet<Terminal> Terminals => terminals;
         public HashSet<Nonterminal> Nonterminals => nonterminals;
         /// <summary>
-        /// 判断产生式是否直接左递归
-        /// </summary>
-        public bool IsLeftRecursive()
-        {
-            throw new System.NotImplementedException("产生式直接左递归判断未完成");
-        }
-        /// <summary>
-        /// 获取第左部文法单元的第一个非终结符
+        /// 如果左部文法单元以非终结符开头则返回该符号，否则返回Null
         /// </summary>
         public Nonterminal GetFirstNT()
         {
@@ -488,6 +510,24 @@ namespace CLK.util
                 throw new System.NotImplementedException("内部错误:构建出无非终结符的左部文法单元");
             }
 
+            return result;
+        }
+        /// <summary>
+        /// 增加一个文法单元到当前产生式,应该尽量少用，目前实现不够好
+        /// </summary>
+        public bool AddStructure(GrammarStructure structure)
+        {
+            var result = rightStructures.Add(structure);
+            GenSymbols();
+            return result;
+        }
+        /// <summary>
+        /// 删除一个文法单元到当前产生式,应该尽量少用，目前实现不够好
+        /// </summary>
+        public bool Remove(GrammarStructure structure)
+        {
+            var result = rightStructures.Remove(structure);
+            GenSymbols();
             return result;
         }
         public override string ToString()
@@ -508,7 +548,7 @@ namespace CLK.util
     /// </summary>
     public enum GrammarType { ZeroType, ContextSensitive, ContextFree, Regular }
     /// <summary>
-    ///  文法:由多个文法产生式构成和开始符号构成
+    ///  零型文法，内部并没有很多供调用的算法
     /// </summary>
     public class Grammar
     {
@@ -517,20 +557,21 @@ namespace CLK.util
         //          去无用符号、产生式
         //          去空产生式
         //          文法规约
-        //          是否左递归
-        //          左递归、左公因子自动消除
         //          文法正确性
         // 
-        // 所有产生式
+        // 所有产生式 这里确保聚拢性
         protected Dictionary<GrammarStructure, HashSet<GrammarStructure>> grammarProductions;
         protected Nonterminal startNonterminalSymbol;//开始符号
-        protected HashSet<Nonterminal> nonterminals;
-        protected HashSet<Terminal> terminals;
-        protected readonly GrammarType grammarType;
+        protected HashSet<Nonterminal> nonterminals;//所有非终结符
+        protected HashSet<Terminal> terminals;//所有终结符
+        protected GrammarType grammarType;
         public Nonterminal StartNonterminalSymbol { get => startNonterminalSymbol; }
         //public List<GrammarProduction> GrammarProductions => grammarProductions;
         public HashSet<Nonterminal> Nonterminals => nonterminals;
         public HashSet<Terminal> Terminals => terminals;
+        /// <summary>
+        /// 获取文法实际类别
+        /// </summary>
         public GrammarType GrammarType => grammarType;
 
         /// <summary>
@@ -544,13 +585,14 @@ namespace CLK.util
             this.grammarProductions = new Dictionary<GrammarStructure, HashSet<GrammarStructure>>();
             AddToDic(grammarProductions);
             this.startNonterminalSymbol = startNonterminalSymbol ?? grammarProductions[0].GetFirstNT();
-            InitSet();//合并终结符 非终结符号
+            GenSymbols();//合并终结符 非终结符号
             if (!GrammarValidate())
             {
                 throw new IllegalGrammarException("不符合文法定义：输入文法异常，必须确保所有的非终结符出现在某个文法产生式的左部");
             }
             grammarType = GType();
         }
+        //将传出的production加入dic
         private void AddToDic(List<GrammarProduction> grammarProductions)
         {
             if (grammarProductions == null || grammarProductions.Count == 0)
@@ -569,6 +611,10 @@ namespace CLK.util
                 }
             }
         }
+        /// <summary>
+        /// 文法有效性验证 目前只想到了所有的非终结符必须出现在左部的某个文法单元这个限制
+        /// </summary>
+        /// <returns></returns>
         protected bool GrammarValidate()
         {
             // 文法合法性判断
@@ -661,8 +707,8 @@ namespace CLK.util
                         }*/
             return type;
         }
-
-        protected void InitSet()
+        //这里可以写的好看点 但没必要
+        protected void GenSymbols()
         {
             if (nonterminals == null)
             {
@@ -696,13 +742,16 @@ namespace CLK.util
                 {
                     tmp += (right + " | ");
                 }
-                tmp = tmp.Remove(tmp.Length - 1) + "\n";
+                var index = tmp.LastIndexOf('|');
+                tmp = tmp.Remove(index - 1) + "\n";
             }
             string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}";
             return grammarStr;
         }
     }
-
+    /// <summary>
+    /// 上下文有关文法，仅仅继承了零型文法的方法
+    /// </summary>
     public class CSG : Grammar
     {
         public CSG(List<GrammarProduction> grammarProductions, Nonterminal startNonterminalSymbol = null) :
