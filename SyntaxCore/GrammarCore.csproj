@@ -44,10 +44,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AlgCore.cs" />
+    <Compile Include="AnalysisDs.cs" />
     <Compile Include="CFG.cs" />
     <Compile Include="CFGParser.cs" />
-    <Compile Include="GrammerUtility.cs" />
+    <Compile Include="GrammarFactory.cs" />
+    <Compile Include="GrammarUtility.cs" />
     <Compile Include="PrintDataExtensions.cs" />
     <Compile Include="RG.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -64,6 +65,9 @@
       <Project>{8f7e5bb9-8748-423c-9130-d6ef127284d3}</Project>
       <Name>DemoInterpreter</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="demoGrammar.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

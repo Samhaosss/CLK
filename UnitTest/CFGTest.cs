@@ -1,8 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 
-namespace CLK.GrammarDS.Tests
+namespace CLK.GrammarCore.Tests
 {
     [TestClass()]
     public class AssemblyInfo
@@ -10,13 +9,9 @@ namespace CLK.GrammarDS.Tests
         [TestMethod()]
         public void IsLeftRecursiveTest()
         {
-            GrammarProduction production = new GrammarProduction("A", "     A a |  B b | C c");
-            GrammarProduction production2 = new GrammarProduction("B", " b B | d D | A ");
-            GrammarProduction production3 = new GrammarProduction("C", "  c  ");
-            GrammarProduction production4 = new GrammarProduction("D", " d D |  a A | e B | d E");
-            GrammarProduction production5 = new GrammarProduction("E", " a A |  a D | e ");
-            SymbolIter symbolIter = new SymbolIter("aaaabbbbdddddaaaaaacc");
-            CFG grammar = new CFG(new List<GrammarProduction> { production, production2, production3, production4, production5 });
+
+            SymbolStream symbolIter = new SymbolStream("aaaabbbbdddddaaaaaacc");
+            CFG grammar = null;
             Console.WriteLine($"grammar:{grammar}");
             Assert.IsTrue(grammar.IsLeftRecursive());
             //消除左递归

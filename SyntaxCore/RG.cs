@@ -1,7 +1,7 @@
 ﻿using ErrorCore;
 using System.Collections.Generic;
 
-namespace CLK.GrammarDS
+namespace CLK.GrammarCore
 {
     public class RG : CFG
     {

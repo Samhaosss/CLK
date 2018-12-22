@@ -1,10 +1,13 @@
-﻿using CLK.GrammarDS;
+﻿using CLK.GrammarCore;
+using CLK.GrammarCore.Factory;
 using CLK.LexicalCore.DemoLexer;
 using CLK.SyntaxCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
+//下一步计划： 完成多个分析程序
+// 
 namespace CLK.Client
 {
 
@@ -22,19 +25,18 @@ namespace CLK.Client
         public static void GrammarDSUsage()
         {
             // 清华大学出版社 《编译原理》： 文法4.4
-            GrammarProduction production = new GrammarProduction("E", "  T E' | ");
-            GrammarProduction production2 = new GrammarProduction("T", " F T'  ");
-            GrammarProduction production3 = new GrammarProduction("T'", "  + F T'|^ ");
-            GrammarProduction production4 = new GrammarProduction("F", "  ( E )  |  id ");
-            GrammarProduction production5 = new GrammarProduction("E'", "  * T E'  | ^ ");
 
-            SymbolIter symbolIter = new SymbolIter(new List<Terminal> { });
+            SymbolStream symbolIter = new SymbolStream(new List<Terminal> { });
 
-            CFG grammar = new CFG(new List<GrammarProduction> { production, production2, production3, production4, production5 });
-            CFG newG = grammar.EliminateRecursive(); ;
+            CFG grammar = DefaultGrammarFactory.CreateCFGFromFile(@"C:\Users\sam\source\repos\CLK\SyntaxCore\demoGrammar.txt");
+            CFG newG = grammar.EliminateRecursive();
             if (grammar.IsLeftRecursive())
             {
                 Console.WriteLine("Grammar is LeftRecursive,eliminate it  ");
+            }
+            if (grammar.IsSatisfyNonrecuPredictionAnalysis())
+            {
+                Console.WriteLine("文法满足非递归调用分析要求");
             }
             Console.WriteLine($"Origin grammar:{grammar}");
             Console.WriteLine($"New grammar:{newG}");

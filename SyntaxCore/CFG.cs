@@ -1,9 +1,9 @@
-﻿using ErrorCore;
+﻿using CLK.AnalysisDs;
+using ErrorCore;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.Linq;
-namespace CLK.GrammarDS
+namespace CLK.GrammarCore
 {
     using CFGrammarDS = Dictionary<Nonterminal, HashSet<GrammarStructure>>;
     using FirstSet = Dictionary<GrammarStructure, HashSet<Terminal>>;
@@ -11,8 +11,20 @@ namespace CLK.GrammarDS
     using FollowSet = Dictionary<Nonterminal, HashSet<Terminal>>;
     using LLTable = Dictionary<Nonterminal, Dictionary<Terminal, GrammarStructure>>;
     /*
-     *  上下文无关文法相关的算法实现在此类内部
-     *  这里还缺很多文法变换算法 如消除空产生式、文法规约、消除单产生式、消除直接、间接左递归
+     *  这个类仅仅包含文法相关的算法 不包含任何分析程序
+     *  具体而言包含如下算法:
+     *      消除无用符号              =》 待完成，非常简单
+     *      判断是否满足递归预测分析
+     *      判断是否满足非递归预测分析
+     *      左递归判断   
+     *      通用左递归消除
+     *      文法非终结符first集
+     *      文法单元first集          =》 感觉有bug 需要修复
+     *      follow集
+     *      预测分析表获取 
+     *      lr1 分析表获取
+     *      slr 分析表获取
+     *  这里还缺很多文法变换算法 如消除空产生式、文法规约、消除单产生式
      * **/
     /// <summary>
     ///  上下文无关文法
@@ -488,6 +500,10 @@ namespace CLK.GrammarDS
         /// <returns></returns>
         public bool IsSatisfyPredictionAnalysis()
         {
+            if (IsLeftRecursive())
+            {
+                return false;
+            }
             // 对每个非终结符的右部文法单元 判断每个文法单元的first集两两之间是否由交集
             GetFirstSetOfStructure();
             foreach (var nt in nonterminals)
@@ -508,13 +524,13 @@ namespace CLK.GrammarDS
             return true;
         }
         //递归下降 使用的变量，其他地方绝对不使用
-        private SymbolIter internalSymBols = null;
+        private SymbolStream internalSymBols = null;
         private Terminal currentTeminal = null;
         /// <summary>
         /// 通用递归下降分析 要求文法的那个非终结符的右部文法单元之间first无交集,否则返回false
         /// </summary>
         /// <returns></returns>
-        public bool RecursiveAnalyze(SymbolIter symbolIter)
+        public bool RecursiveAnalyze(SymbolStream symbolIter)
         {
             if (!IsSatisfyPredictionAnalysis())
             {
@@ -596,7 +612,10 @@ namespace CLK.GrammarDS
             {
                 return predictionAnalysisTable;
             }
-
+            if (!IsSatisfyNonrecuPredictionAnalysis())
+            {
+                return null;
+            }
             GetFirstSetOfStructure();
             GetFollow();
 
@@ -633,205 +652,39 @@ namespace CLK.GrammarDS
             return predictionAnalysisTable;
         }
 
-    }
-    /// <summary>
-    /// 预测分析表
-    /// </summary>
-    public class PredictionAnalysisTable
-    {
-
-        private Dictionary<Nonterminal, Dictionary<Terminal, GrammarStructure>> table;
-        private DataTable interExp; //目前仅仅用于好看的打印
-        private CFG fatherGrammar;
-        public PredictionAnalysisTable(LLTable table, CFG fatherGrammar)
-        {
-            this.table = table;
-            this.fatherGrammar = fatherGrammar;
-        }
         /// <summary>
-        /// 获取表项 如果不存在则返回null
+        /// 判断文法是否适合使用非递归预测分析
         /// </summary>
-        /// <param name="row">行索引</param>
-        /// <param name="col">列索引</param>
-        /// <returns>Structure</returns>
-        public GrammarStructure GetItem(Nonterminal row, Terminal col)
+        /// <returns>返回值 当文法满足LL文法定义</returns>
+        public bool IsSatisfyNonrecuPredictionAnalysis()
         {
-            return table[row][col];
-        }
-        public Dictionary<Terminal, GrammarStructure> GetLine(Nonterminal row)
-        {
-            return table[row];
-        }
-
-        public void Print()
-        {
-
-            if (interExp == null)
-            {
-                interExp = new DataTable("LLTable");
-                interExp.Columns.Add("Nonterminals", typeof(Nonterminal));
-                foreach (var t in fatherGrammar.Terminals)
-                {
-                    if (!t.Equals(Terminal.GetEmpty()))
-                    {
-                        interExp.Columns.Add(t.ToString(), typeof(GrammarStructure));
-                    }
-                }
-                interExp.Columns.Add(Terminal.End.ToString(), typeof(GrammarStructure));
-                foreach (var kv in table)
-                {
-                    DataRow dataRow = interExp.NewRow();
-                    dataRow["Nonterminals"] = kv.Key;
-                    foreach (var item in kv.Value)
-                    {
-                        dataRow[item.Key.Value] = item.Value;
-                    }
-                    interExp.Rows.Add(dataRow);
-                }
-            }
-            interExp.Print();
-        }
-        /// <summary>
-        /// 返回表格形式
-        /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            if (interExp == null)
-            {
-                interExp = new DataTable("LLTable");
-                interExp.Columns.Add("Nonterminals", typeof(Nonterminal));
-                foreach (var t in fatherGrammar.Terminals)
-                {
-                    interExp.Columns.Add(t.ToString(), typeof(GrammarStructure));
-                }
-                interExp.Columns.Add(Terminal.End.ToString(), typeof(GrammarStructure));
-                foreach (var kv in table)
-                {
-                    DataRow dataRow = interExp.NewRow();
-                    dataRow["Nonterminals"] = kv.Key;
-                    foreach (var item in kv.Value)
-                    {
-                        dataRow[item.Key.Value] = item.Value;
-                    }
-                }
-            }
-            return interExp.ToString();
-        }
-    }
-    /// <summary>
-    /// 终结符流
-    /// </summary>
-    public class SymbolIter
-    {
-        private int index;
-        private List<Terminal> symbols;
-
-        public SymbolIter(List<Terminal> symbols)
-        {
-            this.symbols = symbols ?? throw new System.ArgumentNullException();
-            index = 0;
-        }
-        /// <summary>
-        /// 默认所有终结符长度只有一
-        /// </summary>
-        /// <param name="sentence"></param>
-        public SymbolIter(string sentence)
-        {
-            if (sentence == null || sentence.Length == 0)
-            {
-                throw new System.ArgumentException();
-            }
-            index = 0;
-            symbols = new List<Terminal>();
-            foreach (var ch in sentence)
-            {
-                symbols.Add(new Terminal(ch));
-            }
-        }
-        /// <summary>
-        /// 获取并消耗流
-        /// </summary>
-        /// <returns></returns>
-        public Terminal Next()
-        {
-            if (index == symbols.Count)
-            {
-                return null;
-            }
-            return symbols[index++];
-        }
-        /// <summary>
-        /// 获取 但不消耗流 
-        /// </summary>
-        /// <returns></returns>
-        public Terminal Get()
-        {
-            if (index >= symbols.Count)
-            {
-                return null;
-            }
-
-            return symbols[index];
-        }
-        /// <summary>
-        /// 回退流
-        /// </summary>
-        /// <param name="n"></param>
-        /// <returns></returns>
-        public bool BackN(int n)
-        {
-            if (n > index)
+            GetFirstSetOfStructure();
+            GetFollow();
+            //满足递归预测分析 则满足了first集之间的交集为空
+            if (!IsSatisfyPredictionAnalysis())
             {
                 return false;
             }
-
-            index -= n;
+            //接下来判断 若某非终结符的候选式可推出空 则判断first与follow是否有交集
+            // TODO: 完成完整判断
+            foreach (var kv in grammarProductions)
+            {
+                foreach (var stc in kv.Value)
+                {
+                    if (firstSet[stc].Contains(Terminal.GetEmpty()))
+                    {
+                        // 判断除当前元素外 其他任何一个元素的first集若与当前非终结符的follow交集不为空 则不满足ll文法要求
+                        if (kv.Value.SkipWhile(x => x.Equals(stc)).Any(x => firstSet[x].Intersect(follow[kv.Key]).Count() != 0))
+                        {
+                            return false;
+                        }
+                    }
+                }
+            }
             return true;
         }
-        /// <summary>
-        /// 判断流是否消耗完
-        /// </summary>
-        /// <returns></returns>
-        public bool HasNext()
-        {
-            return index < symbols.Count;
-        }
-        /// <summary>
-        /// 获取流剩余非终结符数
-        /// </summary>
-        /// <returns></returns>
-        public int GetRest()
-        {
-            return symbols.Count - index;
-        }
-
-        public override string ToString()
-        {
-            string tmp = "";
-            foreach (var sm in symbols)
-            {
-                tmp += sm;
-            }
-            return tmp;
-        }
     }
-    /// <summary>
-    /// 通用LL分析程序，内部包含分析表和分析时所用的栈
-    /// </summary>
-    public class LLProc
-    {
-        private LLTable llTable;
-        public LLProc(LLTable lLTable)
-        {
-            llTable = llTable;
-        }
 
-        public override string ToString()
-        {
-            return Tmp.PrintTable(llTable);
-        }
-    }
     //暂时没想好去处
     class Tmp
     {
