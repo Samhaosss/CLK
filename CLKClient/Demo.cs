@@ -1,5 +1,6 @@
 ﻿using CLK.GrammarCore;
 using CLK.GrammarCore.Factory;
+using CLK.GrammarCore.Parser;
 using CLK.LexicalCore.DemoLexer;
 using CLK.SyntaxCore;
 using System;
@@ -28,8 +29,9 @@ namespace CLK.Client
 
             SymbolStream symbolIter = new SymbolStream(new List<Terminal> { });
 
-            CFG grammar = DefaultGrammarFactory.CreateCFGFromFile(@"C:\Users\sam\source\repos\CLK\SyntaxCore\demoGrammar.txt");
-            CFG newG = grammar.EliminateRecursive();
+            CFG grammar = DefaultGrammarFactory.CreateFromFile(@"C:\Users\sam\source\repos\CLK\SyntaxCore\demoGrammar.txt") as CFG;
+
+            RG newG = (RG)grammar;
             if (grammar.IsLeftRecursive())
             {
                 Console.WriteLine("Grammar is LeftRecursive,eliminate it  ");
@@ -44,9 +46,9 @@ namespace CLK.Client
             var fst = newG.GetFirstSetOfStructure();
             var first = newG.GetFirstSetOfNonterminals();
             var follow = newG.GetFollow();
-            PrintDic(first, "First");
-            PrintDic(fst, "Structure");
-            PrintDic(follow, "Follow");
+            Console.WriteLine("First:" + first);
+            Console.WriteLine("Structure" + fst);
+            Console.WriteLine("Follow" + follow);
             // 左递归判断
             if (newG.IsLeftRecursive())
             {
@@ -63,7 +65,13 @@ namespace CLK.Client
             {
                 Console.WriteLine($"{symbolIter} is not the  sentence of Grammar");
             }
-            newG.GetPATable().Print();
+            //newG.GetPATable().Print();
+            if (newG.GetPATable() != null)
+            {
+                newG.GetPATable().Print();
+            }
+            DFA dfa = newG.ToDFA();
+            dfa.Print();
 
         }
         public static void PrintDic<C, V>(Dictionary<C, HashSet<V>> dic, String prefix)

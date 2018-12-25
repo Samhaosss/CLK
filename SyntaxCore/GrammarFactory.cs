@@ -140,17 +140,20 @@ namespace CLK.GrammarCore.Factory
         private static GrammarType AnalyseGType(List<GrammarProduction> productions)
         {
             GrammarType grammarType = GrammarType.ZeroType;
-            foreach (var prod in productions)
+            if (productions.All(x => x.LeftStructure.Length() == 1))
             {
-                if (prod.IsSatisfyRG())
+                if (productions.All(x => x.RightStructures.All(y => y.Length() <= 2 && y.Nonterminals.Count <= 1 && y.Terminals.Count <= 1)))
                 {
                     grammarType = GrammarType.Regular;
                 }
-                else if (prod.IsSatisfyCFG())
+                else
                 {
                     grammarType = GrammarType.ContextFree;
                 }
-                else if (prod.IsSatisfyCSG())
+            }
+            else
+            {
+                if (productions.All(X => X.RightStructures.All(y => y.Length() <= X.LeftStructure.Length())))
                 {
                     grammarType = GrammarType.ContextSensitive;
                 }
@@ -162,6 +165,7 @@ namespace CLK.GrammarCore.Factory
             return grammarType;
         }
     }
+
 
     public class DefaultProductionFactory
     {
@@ -296,5 +300,20 @@ namespace CLK.GrammarCore.Factory
             }
             return new Nonterminal(value);
         }
+    }
+    public class DFAFactory
+    {
+        // TODO:未来可能添加一些其他创建DFA的方式
+    }
+
+    /// <summary>
+    /// 创建输入流，目前支持从文件、串获取
+    /// 由于当前得实现允许长度大于一的终结符，因此输入串中终结符之间应当使用空格分离，否则无法创建输入流
+    /// 如： 终结符集合为{ a, ad, c,d} , 当出现句子 aadccc时，无法判断应该分割为 [a ad c c c] 还是 [ a a d c c c]
+    /// 如果终结符之间互相不为前缀则可以不以空格分割
+    /// </summary>
+    public class SymbolStreamFactory
+    {
+
     }
 }

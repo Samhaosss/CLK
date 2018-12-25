@@ -1,19 +1,82 @@
 ﻿using CLK.GrammarCore;
+using System;
 using System.Collections.Generic;
 using System.Data;
-
+using System.Linq;
 namespace CLK.AnalysisDs
 {
     using LLTable = Dictionary<Nonterminal, Dictionary<Terminal, GrammarStructure>>;
-    //尽管内部结构为dic 但应该封装一层
-    // 防止用户随意修改，逻辑也更清楚
-    public class FirstSet
-    {
 
-    }
-    public class FollowSet
-    {
 
+    /// <summary>
+    /// 非终结符和文法单元first集、非终结符follow集的结构,只读
+    /// </summary>
+    /// <typeparam name="T">只能是Nonterminal或GrammarStructure</typeparam>
+    public class SampleDictionary<T>
+    {
+        private Dictionary<T, HashSet<Terminal>> keySet;
+        public SampleDictionary(Dictionary<T, HashSet<Terminal>> keySet)
+        {
+            if (!(typeof(T).Equals(typeof(Nonterminal)) || typeof(T).Equals(typeof(GrammarStructure))))
+            {
+                throw new Exception("类型参数错误");
+            }
+            this.keySet = keySet;
+        }
+
+        public override bool Equals(object obj)
+        {
+            Dictionary<T, HashSet<Terminal>> tmp = (Dictionary<T, HashSet<Terminal>>)obj;
+            foreach (var key in keySet.Keys)
+            {
+                if (tmp.TryGetValue(key, out HashSet<Terminal> values))
+                {
+                    if (!values.SequenceEqual(keySet[key]))
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public HashSet<Terminal> Get(T key)
+        {
+            if (!keySet.ContainsKey(key))
+            {
+                throw new KeyNotFoundException($"当前输入<{key}>不在key集合中");
+            }
+
+            return keySet[key];
+        }
+
+        public override int GetHashCode()
+        {
+            return -25021980 + EqualityComparer<Dictionary<T, HashSet<Terminal>>>.Default.GetHashCode(keySet);
+        }
+
+        public override string ToString()
+        {
+            string tmp = "";
+            foreach (var key in keySet.Keys)
+            {
+                tmp += key + "=> {";
+                foreach (var value in keySet[key])
+                {
+                    tmp += value + ", ";
+                }
+                tmp += "}\n";
+            }
+            return tmp.Remove(tmp.LastIndexOf('\n'));
+        }
+        public HashSet<Terminal> this[T index]
+        {
+            get { return keySet[index]; }
+        }
     }
     /// <summary>
     /// 预测分析表

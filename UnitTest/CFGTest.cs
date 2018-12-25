@@ -1,4 +1,5 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using CLK.GrammarCore.Parser;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
 namespace CLK.GrammarCore.Tests

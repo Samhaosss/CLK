@@ -28,29 +28,17 @@ namespace CLK.GrammarCore
     public abstract class GrammarSymbol
     {
 
-        //protected internal static char delem = '|';
-        //protected internal static char empty = '^';
-        protected internal static char endSper = '$';
-        protected internal static string EmptyTerminal = "^";
+        protected internal static char endSperValue = '$';
+        protected internal static string EmptyTerminalValue = "^";
         protected readonly string value;
         /// <summary>
         /// 获取文法符号类别
         /// </summary>
         public abstract SymbolType GetSymbolType();
-        // 不会被用户调用 
+        // 抽象基类 不会被用户调用 
         public GrammarSymbol(string value)
         {
             this.value = value.Trim(' ');
-            //空、分割符在解析时会被处理
-            /*//内部不能包含空格或| 否则导致语句混乱
-            if (value.Contains(delem) || value.Contains(empty))
-            {
-                throw new IllegalChException($"文法符号:{value}中不允许包含空格或{delem}");
-            }//如果包含$或^则当前输入长度只能为一
-            else if ((value.Contains(endSper) || value.Contains(EmptyTerminal)) && value.Length != 1)
-            {
-                throw new IllegalChException($"文法符号:{value}中不允许包含语句分隔符{delem}或用于表示空的{EmptyTerminal}");
-            }*/
         }
         // 存入hashtable需要的方法
         /// <summary>
@@ -59,7 +47,8 @@ namespace CLK.GrammarCore
         /// </summary>
         public override bool Equals(object obj)
         {
-            GrammarSymbol sym = obj as GrammarSymbol;
+            //如果转换失败 直接抛出异常
+            GrammarSymbol sym = (GrammarSymbol)obj;
             // 这样允许将非终结符与终结符比较 比较合理
             if (sym.GetSymbolType() != GetSymbolType())
             {
@@ -93,17 +82,17 @@ namespace CLK.GrammarCore
         /// <summary>
         /// 空字符
         /// </summary>
-        public static Terminal Empty = new Terminal(EmptyTerminal);
+        public static Terminal Empty = new Terminal(EmptyTerminalValue);
         /// <summary>
         /// 语句分隔符
         /// </summary>
-        public static Terminal End = new Terminal(endSper);
+        public static Terminal End = new Terminal(endSperValue);
         /// <summary>
-        /// 获取空字符
+        /// 获取空字符 这个方法本不应该存在，要获取空，直接获取terminal类得静态成员 存在得原因是一开始得失误
         /// </summary>
-        public static Terminal GetEmpty()
+        internal static Terminal GetEmpty()
         {
-            return new Terminal(EmptyTerminal);
+            return new Terminal(EmptyTerminalValue);
         }
 
         public string Value { get => value; }
@@ -114,6 +103,10 @@ namespace CLK.GrammarCore
         {
 
         }
+        /// <summary>
+        /// 通过单个字符创建终结符
+        /// </summary>
+        /// <param name="value"></param>
         public Terminal(char value) : base(value.ToString())
         {
         }
@@ -123,7 +116,7 @@ namespace CLK.GrammarCore
         /// <returns></returns>
         public bool IsEmpty()
         {
-            return value.Equals(EmptyTerminal);
+            return value.Equals(EmptyTerminalValue);
         }
         public override SymbolType GetSymbolType()
         {
@@ -143,11 +136,15 @@ namespace CLK.GrammarCore
         public Nonterminal(string name) : base(name)
         {
         }
+        public Nonterminal(char value) : base(value.ToString()) { }
         public string Value => value;
+
+
         public override SymbolType GetSymbolType()
         {
             return SymbolType.Nonterminal;
         }
+
     }
 
     /// <summary>
@@ -161,7 +158,7 @@ namespace CLK.GrammarCore
         private HashSet<Nonterminal> nonterminals;
 
         /// <summary>
-        ///  通过List构造文法单元,将去除list中的多个空字符
+        ///  通过List构造文法单元,将去除list中的多余的空字符
         /// </summary>
         public GrammarStructure(List<GrammarSymbol> structure)
         {
@@ -224,6 +221,7 @@ namespace CLK.GrammarCore
         /// </summary>
         private void RemoveMutiEmpty()
         {
+            // 如果文法单元包含空，但长度不为0，则该空无意义,如 a^B， 其中的^没有意义
             if (structure.Contains(Terminal.GetEmpty()) && structure.Count != 1)
             {
                 structure.RemoveAll(x => x.Equals(Terminal.GetEmpty()));
@@ -247,7 +245,14 @@ namespace CLK.GrammarCore
         {
             return nonterminals.Count != 0;
         }
-
+        /// <summary>
+        /// 判断是否仅包含空
+        /// </summary>
+        public bool IsEmpty() { return structure.Count == 1 && structure[0].Equals(Terminal.Empty); }
+        /// <summary>
+        /// 是否包含终结符
+        /// </summary>
+        public bool IsContrainTerminals() { return terminals.Count != 0; }
         /// <summary>
         /// 判断一个符号是否在当前文法单元
         /// </summary>
@@ -258,8 +263,8 @@ namespace CLK.GrammarCore
             return structure.Contains(sym);
         }
         public int Length() { return structure.Count; }
-        public HashSet<Nonterminal> Nonterminals => nonterminals;
-        public HashSet<Terminal> Terminals => terminals;
+        public HashSet<Nonterminal> Nonterminals => new HashSet<Nonterminal>(nonterminals);
+        public HashSet<Terminal> Terminals => new HashSet<Terminal>(terminals);
         // 这里这样做是为了后面实现上下文无关文法相关算法方便 这样的返回 不会修改当前终结符内部的结构 而文法符号又是不变的所以这么做完全没影响
         internal List<GrammarSymbol> Structure { get => new List<GrammarSymbol>(structure); }
 
@@ -303,7 +308,7 @@ namespace CLK.GrammarCore
         }
 
         /// <summary>
-        /// 向结尾添加非终结符, 
+        /// 向结尾添加非终结符, 仅供内部使用
         /// </summary>
         /// <param name="nt">非终结符</param>
         internal GrammarStructure AppendNt(Nonterminal nt)
@@ -345,7 +350,7 @@ namespace CLK.GrammarCore
         /// 如果文法单元第一个符号为非终结符则返回，否则返回null
         /// </summary>
         /// <returns></returns>
-        public Nonterminal GetFirstNT()
+        internal Nonterminal GetFirstNT()
         {
             return structure[0].GetSymbolType() == SymbolType.Nonterminal ? (Nonterminal)structure[0] : null;
         }
@@ -401,13 +406,13 @@ namespace CLK.GrammarCore
             terminals.TrimExcess();
         }
         public GrammarStructure LeftStructure => leftStructure;
-        public HashSet<GrammarStructure> RightStructures => rightStructures;
-        public HashSet<Terminal> Terminals => terminals;
-        public HashSet<Nonterminal> Nonterminals => nonterminals;
+        public HashSet<GrammarStructure> RightStructures => new HashSet<GrammarStructure>(rightStructures);
+        public HashSet<Terminal> Terminals => new HashSet<Terminal>(terminals);
+        public HashSet<Nonterminal> Nonterminals => new HashSet<Nonterminal>(nonterminals);
         /// <summary>
         /// 如果左部文法单元以非终结符开头则返回该符号，否则返回Null
         /// </summary>
-        public Nonterminal GetFirstNT()
+        internal Nonterminal GetFirstNT()
         {
             var result = leftStructure.GetFirstNT();
             if (result == null)
@@ -448,7 +453,7 @@ namespace CLK.GrammarCore
                 return false;
             }
             // 右部文法单元长度不超过2 且包含非终结符个数不超过1
-            return rightStructures.All(x => x.Nonterminals.Count <= 1 && x.Length() <= 2);
+            return rightStructures.All(x => x.Nonterminals.Count <= 1 && x.Length() <= 2 && x.Terminals.Count <= 1);
         }
         /// <returns></returns>
         public override string ToString()
@@ -559,8 +564,9 @@ namespace CLK.GrammarCore
             GrammarType type = GrammarType.ZeroType;
             // 更为简洁的写法
             if (grammarProductions.Keys.All(x => x.Length() == 1))
-            {
-                if (grammarProductions.Keys.All(x => grammarProductions[x].All(y => y.Length() <= 2 && y.Nonterminals.Count <= 1)))
+            {   //每个产生式的右部文法单元长度不超过2 终结符非终结符不超过2
+                if (grammarProductions.Keys.All(x => grammarProductions[x].All(
+                                            y => y.Length() <= 2 && y.Nonterminals.Count <= 1 && y.Terminals.Count <= 1)))
                 {
                     type = GrammarType.Regular;
                 }
@@ -670,6 +676,7 @@ namespace CLK.GrammarCore
             string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}";
             return grammarStr;
         }
+        // TODO: 需要添加一些适用于所用文法的算法
     }
     /// <summary>
     /// 上下文有关文法，仅仅继承了零型文法的方法，目前未实现相关算法
@@ -686,6 +693,8 @@ namespace CLK.GrammarCore
                 throw new IllegalGrammarException("文法不符合上下文有关文法定义");
             }
         }
+
+        //TODO: 需要添加一些适用于上下文有关文法的算法
     }
 
 }
