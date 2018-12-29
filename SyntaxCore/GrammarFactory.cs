@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CLK.GrammarCore.Parser;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 /*
@@ -64,7 +65,7 @@ namespace CLK.GrammarCore.Factory
             // 必须转为list才能真正迭代str
             char[] de = new char[] { '\n', '\r', '\t' };
             //注意这里不能去掉空格
-            var lines = rowData.Split('\n').Select(x => x.Trim(de)).ToList();    //无论那种操作系统 换行前的最后一个字符均为/n
+            var lines = rowData.Split('\n').Select(x => x.Trim(invalidCh)).ToList();    //无论那种操作系统 换行前的最后一个字符均为/n
             var itr = lines.GetEnumerator();
             itr.MoveNext();//初始化迭代器
             List<GrammarProduction> productions = new List<GrammarProduction>();
@@ -84,13 +85,15 @@ namespace CLK.GrammarCore.Factory
                     {
                         throw new ArgumentException(@"构造文法的输出串不能以 '\' 结束，否则被认为当前产生式未完成, 行数:" + lineNo);
                     }
-                    sentence = sentence.Remove(sentence.Count() - 1);
+                    sentence = sentence.Remove(sentence.Count() - 1);  //去掉最后的行未结束标志
+                    sentence += " "; //添加一个空格代替行未结束标志 认为换行后的内容绝对不属于同一个文法符号
                     lineNo += 1;
                 }
                 if (sentence.Contains(defaultUnfinishedLineFlag))
                 {
                     throw new ArgumentException($"构造产生式的语句包含了用于标识行未结束的符号:{defaultUnfinishedLineFlag},sentenceNo:{sentenceNo}\n:\r{sentence}\n");
                 }
+                // 到了这里就合理的分开了各个句子 接下来处理句子的逻辑委托给创建产生式
                 try
                 {
                     productions.Add(DefaultProductionFactory.CreateFromStr(sentence));
@@ -142,7 +145,7 @@ namespace CLK.GrammarCore.Factory
             GrammarType grammarType = GrammarType.ZeroType;
             if (productions.All(x => x.LeftStructure.Length() == 1))
             {
-                if (productions.All(x => x.RightStructures.All(y => y.Length() <= 2 && y.Nonterminals.Count <= 1 && y.Terminals.Count <= 1)))
+                if (productions.All(x => x.RightStructures.All(y => y.IsSatisfyRG())))
                 {
                     grammarType = GrammarType.Regular;
                 }
@@ -171,7 +174,11 @@ namespace CLK.GrammarCore.Factory
     {
         public static string defaultLeftRightSp = "=>";
         public static char defaultStructureSp = '|';
-
+        /// <summary>
+        /// 从串创建产生式，产生式形式  [ GrammarStructure ] => [GrammarStructure] | ...
+        /// </summary>
+        /// <param name="rowData"></param>
+        /// <returns></returns>
         public static GrammarProduction CreateFromStr(string rowData)
         {
             if (rowData == null)
@@ -184,8 +191,8 @@ namespace CLK.GrammarCore.Factory
                 throw new ArgumentException("用于构建文法产生式的串不包含有效字符");
             }
             int index;
-            // 如果包含多次 => 或一次也不包含 或包含了 但在头部即不包含左部符号
-            if (SubStrTimes(rowData, defaultLeftRightSp, out index) != 1 || index == 0)
+            // 如果包含多次 => 或一次也不包含 
+            if (SubStrTimes(rowData, defaultLeftRightSp, out index) != 1)
             {
                 throw new ArgumentException($"用于构建文法产生式的串不包含或包含多次左右部分割符:{defaultLeftRightSp}");
             }
@@ -193,15 +200,19 @@ namespace CLK.GrammarCore.Factory
             //这里很烦 c#提供的api不支持直接按照字符串分割
             //sp, StringSplitOptions.RemoveEmptyEntries
             var strcs = rowData.Split(sp, StringSplitOptions.RemoveEmptyEntries);
-            // 防止不包含右部文法单元
+            // 防止不包含右部或右部文法单元
             if (strcs.Length != 2)
             {
-                throw new ArgumentException($"构造产生式的语句格式不正确");
+                throw new ArgumentException($"构造产生式的语句格式不正确:{rowData}");
             }
-            var productions = new HashSet<GrammarProduction>();
             GrammarStructure left = DefaultStructureFactory.CreateFromStr(strcs[0]);
-            var rightStr = strcs[1].Split(defaultStructureSp);
-            List<GrammarStructure> right = rightStr.SkipWhile(X => X.Equals("")).Select(x => DefaultStructureFactory.CreateFromStr(x)).ToList();
+            var rightStr = strcs[1].Split(defaultStructureSp).Select(x => x.Trim(DefaultGrammarFactory.invalidCh)).ToList();
+            if (rightStr.Any(X => X.Equals("")))
+            {
+                throw new ArgumentException($"构造产生式的语句中，分隔符之间必须包含有效符号:{rowData}");
+            }
+
+            List<GrammarStructure> right = rightStr.Select(x => DefaultStructureFactory.CreateFromStr(x)).ToList();
             return new GrammarProduction(left, new HashSet<GrammarStructure>(right));
         }
         private static int SubStrTimes(string origin, string sub, out int index)
@@ -221,7 +232,7 @@ namespace CLK.GrammarCore.Factory
     public class DefaultStructureFactory
     {
         public static char[] defaultLIllegalCh = new char[] { DefaultGrammarFactory.defaultStructureSp };
-        public static char defaultSymbolSp = ' ';
+        public static char[] defaultSymbolSp = new char[] { ' ', '\r', '\t' };
         /// <summary>
         /// 将使用默认的文法符号定义创建文法单元，文法符号之间以空格分割
         /// </summary>
@@ -234,7 +245,7 @@ namespace CLK.GrammarCore.Factory
                 throw new ArgumentException("用于构建文法单元的串不包含有效字符");
             }
             var structure = new List<GrammarSymbol>();
-            var symbols = rowData.Split(defaultSymbolSp).SkipWhile(x => x.Equals(""));
+            var symbols = rowData.Split(defaultSymbolSp).Where(x => !x.Equals(""));
             foreach (var sym in symbols)
             {
                 structure.Add(DefaultSymbolFactory.CreateSymbol(sym));
@@ -249,6 +260,9 @@ namespace CLK.GrammarCore.Factory
         /// </summary>
         public static char[] defaultIllegalCh = new char[] { ' ', '$', '|', '\\' };
         public static char[] invalidCh = { ' ', '\n', '\r', '\t' };
+
+        private static Dictionary<string, Terminal> terminalsBuf = new Dictionary<string, Terminal>();
+        private static Dictionary<string, Nonterminal> nonterminalBuf = new Dictionary<string, Nonterminal>();
         /// <summary>
         /// 通过串构建文法符号，如果串开头大写则创建非终结符，否则创建终结符
         /// 终结符不可包含非法字符
@@ -264,6 +278,7 @@ namespace CLK.GrammarCore.Factory
             {
                 throw new ArgumentException("用于构建文法符号的串不包含有效字符");
             }
+
             if (char.IsLetter(value[0]) && !char.IsLower(value[0]))
             {
                 return CreateNonterminal(value);
@@ -279,7 +294,21 @@ namespace CLK.GrammarCore.Factory
             {
                 throw new ArgumentException($"用于构建终结符的串:{value}不能是: ' ', '$', '|', '\\'");
             }
-            return new Terminal(value);
+            if (terminalsBuf.ContainsKey(value))
+            {
+                return terminalsBuf[value];
+            }
+            else
+            {
+                var result = new Terminal(value);
+                terminalsBuf.Add(value, result);
+
+                return result;
+            }
+        }
+        public static Terminal CreateTerminal(char ch)
+        {
+            return CreateTerminal(ch.ToString());
         }
         public static Terminal CreateEmptyTerminal()
         {
@@ -298,6 +327,15 @@ namespace CLK.GrammarCore.Factory
                     throw new ArgumentException("用于构建非终结符的串不可包含非法字符");
                 }
             }
+            if (nonterminalBuf.ContainsKey(value))
+            {
+                return nonterminalBuf[value];
+            }
+            else
+            {
+                var result = new Nonterminal(value);
+                nonterminalBuf.Add(value, result);
+            }
             return new Nonterminal(value);
         }
     }
@@ -312,8 +350,29 @@ namespace CLK.GrammarCore.Factory
     /// 如： 终结符集合为{ a, ad, c,d} , 当出现句子 aadccc时，无法判断应该分割为 [a ad c c c] 还是 [ a a d c c c]
     /// 如果终结符之间互相不为前缀则可以不以空格分割
     /// </summary>
-    public class SymbolStreamFactory
+    public class DefaultSymbolStreamFactory
     {
-
+        public static SymbolStream CreateFromStr(CFG grammar, string input)
+        {
+            List<Terminal> stream = new List<Terminal>();
+            if (grammar.Terminals.All(X => X.Value.Count() == 1))
+            {
+                foreach (var ch in input)
+                {
+                    Terminal terminal = DefaultSymbolFactory.CreateTerminal(ch);
+                    if (!grammar.Terminals.Contains(terminal))
+                    {
+                        throw new ErrorCore.IllegalChException("输入流包含不存在于文法终结符集的字符");
+                    }
+                    stream.Add(terminal);
+                }
+                stream.Add(Terminal.End);
+            }
+            else
+            {
+                throw new System.NotImplementedException("未完成复杂输入流处理");
+            }
+            return new SymbolStream(stream);
+        }
     }
 }

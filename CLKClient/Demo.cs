@@ -29,50 +29,70 @@ namespace CLK.Client
 
             SymbolStream symbolIter = new SymbolStream(new List<Terminal> { });
 
-            CFG grammar = DefaultGrammarFactory.CreateFromFile(@"C:\Users\sam\source\repos\CLK\SyntaxCore\demoGrammar.txt") as CFG;
+            Grammar grammar = DefaultGrammarFactory.CreateFromFile(@"C:\Users\sam\source\repos\CLK\SyntaxCore\demoGrammar.txt");
+            CFG cfg = (CFG)grammar;
+            Console.WriteLine($"{cfg.GetFirstSetOfStructure()}");
+            Console.WriteLine($"{cfg.GetFollow()}");
+            var table = cfg.GetPATable();
+            table.Print();
+            LLParser llParser = new LLParser(cfg);
+            SymbolStream symbolStream = DefaultSymbolStreamFactory.CreateFromStr(cfg, "d+(d+d)");
+            llParser.Init(symbolStream);
+            int tmp = 0;
+            do
+            {
+                llParser.Walk();
+                llParser.PrintState();
+            } while (llParser.GetState() == ParserState.Unfinished);
 
-            RG newG = (RG)grammar;
-            if (grammar.IsLeftRecursive())
+            var atl = llParser.GetParseResult();
+            Console.WriteLine($"Final:state{llParser.GetState()}");
+            if (atl != null)
             {
-                Console.WriteLine("Grammar is LeftRecursive,eliminate it  ");
+                atl.Print();
             }
-            if (grammar.IsSatisfyNonrecuPredictionAnalysis())
-            {
-                Console.WriteLine("文法满足非递归调用分析要求");
-            }
-            Console.WriteLine($"Origin grammar:{grammar}");
-            Console.WriteLine($"New grammar:{newG}");
+            /*  RG newG = (RG)grammar;
+              if (grammar.IsLeftRecursive())
+              {
+                  Console.WriteLine("Grammar is LeftRecursive,eliminate it  ");
+              }
+              if (grammar.IsSatisfyNonrecuPredictionAnalysis())
+              {
+                  Console.WriteLine("文法满足非递归调用分析要求");
+              }
+              Console.WriteLine($"Origin grammar:{grammar}");
+              Console.WriteLine($"New grammar:{newG}");
 
-            var fst = newG.GetFirstSetOfStructure();
-            var first = newG.GetFirstSetOfNonterminals();
-            var follow = newG.GetFollow();
-            Console.WriteLine("First:" + first);
-            Console.WriteLine("Structure" + fst);
-            Console.WriteLine("Follow" + follow);
-            // 左递归判断
-            if (newG.IsLeftRecursive())
-            {
-                Console.WriteLine("grammar is left recursive");
-            }
-            Console.WriteLine("EliminateCR:");
-            // 递归下降分析
-            Console.WriteLine($"TEST:{symbolIter}");
-            if (newG.RecursiveAnalyze(symbolIter))
-            {
-                Console.WriteLine($"{symbolIter} is the sentence of Grammar");
-            }
-            else
-            {
-                Console.WriteLine($"{symbolIter} is not the  sentence of Grammar");
-            }
-            //newG.GetPATable().Print();
-            if (newG.GetPATable() != null)
-            {
-                newG.GetPATable().Print();
-            }
-            DFA dfa = newG.ToDFA();
-            dfa.Print();
-
+              var fst = newG.GetFirstSetOfStructure();
+              var first = newG.GetFirstSetOfNonterminals();
+              var follow = newG.GetFollow();
+              Console.WriteLine("First:" + first);
+              Console.WriteLine("Structure" + fst);
+              Console.WriteLine("Follow" + follow);
+              // 左递归判断
+              if (newG.IsLeftRecursive())
+              {
+                  Console.WriteLine("grammar is left recursive");
+              }
+              Console.WriteLine("EliminateCR:");
+              // 递归下降分析
+              Console.WriteLine($"TEST:{symbolIter}");
+              if (newG.RecursiveAnalyze(symbolIter))
+              {
+                  Console.WriteLine($"{symbolIter} is the sentence of Grammar");
+              }
+              else
+              {
+                  Console.WriteLine($"{symbolIter} is not the  sentence of Grammar");
+              }
+              //newG.GetPATable().Print();
+              if (newG.GetPATable() != null)
+              {
+                  newG.GetPATable().Print();
+              }
+              DFA dfa = newG.ToDFA();
+              dfa.Print();
+              */
         }
         public static void PrintDic<C, V>(Dictionary<C, HashSet<V>> dic, String prefix)
         {

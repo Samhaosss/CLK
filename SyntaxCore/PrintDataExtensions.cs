@@ -1,4 +1,6 @@
-﻿using System;
+﻿/*
+ * 这部分并不是文法作者库完成，因为这份下载的代码并没有说明，所以在此说明
+ * **/
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -24,7 +26,9 @@ namespace System.Data
         public static void PrintColumns(this DataSet dataSet, params string[] columnNames)
         {
             foreach (DataTable dataTable in dataSet.Tables)
+            {
                 PrintColumns(dataTable, columnNames);
+            }
         }
 
         private static void PrintColumns(string name, DataColumn[] columns)
@@ -44,19 +48,27 @@ namespace System.Data
             {
                 int maxLength = columns.Select(c => c.Ordinal).Max().ToString().Length;
                 if (length0 < maxLength)
+                {
                     length0 = maxLength;
+                }
 
                 maxLength = columns.Select(c => c.ColumnName.Length).Max();
                 if (length1 < maxLength)
+                {
                     length1 = maxLength;
+                }
 
                 maxLength = columns.Select(c => c.DataType.ToString().Length).Max();
                 if (length2 < maxLength)
+                {
                     length2 = maxLength;
+                }
 
                 maxLength = columns.Select(c => GetDataMemberType(c).Length + 1 + c.ColumnName.Length).Max();
                 if (length4 < maxLength)
+                {
                     length4 = maxLength;
+                }
             }
 
             string horizontal0 = new String(Horizontal_Bar, length0 + 2);
@@ -66,7 +78,9 @@ namespace System.Data
             string horizontal4 = new String(Horizontal_Bar, length4 + 2);
 
             if (string.IsNullOrEmpty(name) == false)
+            {
                 WriteLine("{0}:", name);
+            }
 
             WriteLine("{5}{0}{6}{1}{6}{2}{6}{3}{6}{4}{7}", horizontal0, horizontal1, horizontal2, horizontal3, horizontal4, Top_Left, Top_Center, Top_Right);
 
@@ -90,43 +104,81 @@ namespace System.Data
         private static string GetDataMemberType(DataColumn column)
         {
             if (column.DataType == typeof(string))
+            {
                 return "string";
+            }
             else if (column.DataType == typeof(int))
+            {
                 return "int" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(short))
+            {
                 return "short" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(long))
+            {
                 return "long" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(double))
+            {
                 return "double" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(decimal))
+            {
                 return "decimal" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(float))
+            {
                 return "float" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(char))
+            {
                 return "char" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(bool))
+            {
                 return "bool" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(uint))
+            {
                 return "uint" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(ushort))
+            {
                 return "ushort" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(ulong))
+            {
                 return "ulong" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(byte))
+            {
                 return "byte" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(sbyte))
+            {
                 return "sbyte" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(DateTime))
+            {
                 return "DateTime" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(TimeSpan))
+            {
                 return "TimeSpan" + (column.AllowDBNull ? "?" : string.Empty);
+            }
             else if (column.DataType == typeof(Type))
+            {
                 return "Type";
+            }
             else if (column.DataType == typeof(byte[]))
+            {
                 return "byte[]";
+            }
             else
+            {
                 return column.DataType.ToString() + (column.AllowDBNull && column.DataType.IsClass == false ? "?" : string.Empty);
+            }
         }
 
         #endregion
@@ -259,7 +311,9 @@ namespace System.Data
         public static void Print(this DataSet dataSet, bool rowOrdinals = false, int top = 0, ValueToStringHandler toString = null, params string[] columnNames)
         {
             foreach (DataTable dataTable in dataSet.Tables)
+            {
                 Print(dataTable, rowOrdinals, top, toString, columnNames);
+            }
         }
 
         #endregion
@@ -322,7 +376,9 @@ namespace System.Data
             }
 
             if (dataTable != null && string.IsNullOrEmpty(dataTable.TableName) == false)
+            {
                 WriteLine("{0}:", dataTable.TableName);
+            }
 
             DataColumn[] columns = GetColumns(dataTable, columnNames, ordinalColumnName);
             if (columns.Length == 0)
@@ -333,11 +389,15 @@ namespace System.Data
             }
 
             if (top > 0)
+            {
                 dataRows = dataRows.Take(top);
+            }
 
             int[] lengths = columns.Select(c => c.ColumnName.Length).ToArray();
             foreach (DataRow row in dataRows)
+            {
                 CalculateLengths(row, columns, lengths, toString);
+            }
 
             int rowOrdinalsLength = 0;
             if (rowOrdinals)
@@ -346,12 +406,18 @@ namespace System.Data
                 {
                     int maxRowOrdinal = 0;
                     if (string.IsNullOrEmpty(ordinalColumnName))
+                    {
                         maxRowOrdinal = dataRows.Select(row => row.Table.Rows.IndexOf(row)).Max();
+                    }
                     else
+                    {
                         maxRowOrdinal = dataRows.Select(row => (int)row[ordinalColumnName]).Max();
+                    }
 
                     if (maxRowOrdinal > -1)
+                    {
                         rowOrdinalsLength = maxRowOrdinal.ToString().Length;
+                    }
                 }
             }
 
@@ -403,7 +469,10 @@ namespace System.Data
 
             objects[0] = string.Empty;
             for (int i = 0; i < columns.Length; i++)
+            {
                 objects[i + 1] = columns[i];
+            }
+
             WriteLine(formatHeaders, objects);
 
             WriteLine(separator);
@@ -414,9 +483,14 @@ namespace System.Data
                 {
                     int ordinal = 0;
                     if (string.IsNullOrEmpty(ordinalColumnName))
+                    {
                         ordinal = row.Table.Rows.IndexOf(row);
+                    }
                     else
+                    {
                         ordinal = (int)row[ordinalColumnName];
+                    }
+
                     objects[0] = (ordinal > -1 ? ordinal : (int?)null);
                 }
 
@@ -429,7 +503,9 @@ namespace System.Data
                     {
                         str = toString(obj, row, columns[i]);
                         if (str == null)
+                        {
                             str = "null";
+                        }
                     }
                     else
                     {
@@ -462,7 +538,10 @@ namespace System.Data
             {
                 ordinalColumnName = "_ordinal";
                 while (dataTable.Columns.Contains(ordinalColumnName))
+                {
                     ordinalColumnName = "_" + ordinalColumnName;
+                }
+
                 dataTable.Columns.Add(ordinalColumnName, typeof(int));
 
                 var it = dataView.GetEnumerator();
@@ -471,7 +550,10 @@ namespace System.Data
                 {
                     rowCounter++;
                     if (top > 0 && rowCounter >= top)
+                    {
                         break;
+                    }
+
                     DataRow dataRow = ((DataRowView)it.Current).Row;
                     dataTable.Rows[rowCounter][ordinalColumnName] = dataRow.Table.Rows.IndexOf(dataRow);
                 }
@@ -483,9 +565,13 @@ namespace System.Data
         private static DataColumn[] GetColumns(DataTable dataTable, string[] columnNames, string ordinalColumnName = null)
         {
             if (columnNames != null && columnNames.Length > 0)
+            {
                 return columnNames.Join(dataTable.Columns.Cast<DataColumn>(), n => n, c => c.ColumnName, (n, c) => c, StringComparer.CurrentCultureIgnoreCase).Where(c => string.IsNullOrEmpty(ordinalColumnName) || c.ColumnName != ordinalColumnName).ToArray();
+            }
             else
+            {
                 return dataTable.Columns.Cast<DataColumn>().Where(c => string.IsNullOrEmpty(ordinalColumnName) || c.ColumnName != ordinalColumnName).ToArray();
+            }
         }
 
         private static void CalculateLengths(DataRow row, DataColumn[] columns, int[] lengths, ValueToStringHandler toString)
@@ -499,7 +585,9 @@ namespace System.Data
                 {
                     str = toString(obj, row, columns[i]);
                     if (str == null)
+                    {
                         str = "null";
+                    }
                 }
                 else
                 {
@@ -507,7 +595,9 @@ namespace System.Data
                 }
 
                 if (lengths[i] < str.Length)
+                {
                     lengths[i] = str.Length;
+                }
             }
         }
 
@@ -656,7 +746,9 @@ namespace System.Data
         public static void PrintList(this DataSet dataSet, bool rowOrdinals = false, int top = 0, ValueToStringHandler toString = null, int repeatColumns = 2, RepeatDirection repeatDirection = RepeatDirection.Vertical, string delimiter = ": ", params string[] columnNames)
         {
             foreach (DataTable dataTable in dataSet.Tables)
+            {
                 PrintList(dataTable, rowOrdinals, top, toString, repeatColumns, repeatDirection, delimiter, columnNames);
+            }
         }
 
         #endregion
@@ -721,7 +813,9 @@ namespace System.Data
         private static void PrintListRows(DataTable dataTable, IEnumerable<DataRow> dataRows, bool rowOrdinals, int top, ValueToStringHandler toString, int repeatColumns, RepeatDirection repeatDirection, string delimiter, string[] columnNames, string ordinalColumnName = null)
         {
             if (dataTable != null && string.IsNullOrEmpty(dataTable.TableName) == false)
+            {
                 WriteLine("{0}:", dataTable.TableName);
+            }
 
             if (dataRows.Count() == 0)
             {
@@ -739,13 +833,18 @@ namespace System.Data
             }
 
             if (top > 0)
+            {
                 dataRows = dataRows.Take(top);
+            }
 
             int columnsLength = columns.Select(c => c.ColumnName.Length).Max();
 
             int[] lengths = new int[columns.Length];
             foreach (DataRow row in dataRows)
+            {
                 CalculateLengths(row, columns, lengths, toString);
+            }
+
             int rowsLength = lengths.Max();
 
             if (rowOrdinals)
@@ -753,37 +852,54 @@ namespace System.Data
                 if (dataRows.Count() > 0)
                 {
                     if (columnsLength < 7) // "Ordinal".Length
+                    {
                         columnsLength = 7;
+                    }
 
                     int maxRowOrdinal = 0;
                     if (string.IsNullOrEmpty(ordinalColumnName))
+                    {
                         maxRowOrdinal = dataRows.Select(row => row.Table.Rows.IndexOf(row)).Max();
+                    }
                     else
+                    {
                         maxRowOrdinal = dataRows.Select(row => (int)row[ordinalColumnName]).Max();
+                    }
 
                     if (maxRowOrdinal > -1)
                     {
                         int rowOrdinalsLength = maxRowOrdinal.ToString().Length;
                         if (rowsLength < rowOrdinalsLength)
+                        {
                             rowsLength = rowOrdinalsLength;
+                        }
                     }
                 }
             }
 
             if (repeatColumns < 1)
+            {
                 repeatColumns = 1;
+            }
 
             if (repeatColumns > dataRows.Count())
+            {
                 repeatColumns = dataRows.Count();
+            }
 
             int lastRowFilledCellsCount = dataRows.Count() % repeatColumns;
             if (lastRowFilledCellsCount == 0)
+            {
                 lastRowFilledCellsCount = repeatColumns;
+            }
+
             int lastRowEmptyCellsCount = repeatColumns - lastRowFilledCellsCount;
             int rowsCount = (dataRows.Count() / repeatColumns) + (dataRows.Count() % repeatColumns > 0 ? 1 : 0);
 
             if (delimiter == null)
+            {
                 delimiter = string.Empty;
+            }
 
             string cellFormat = string.Format(" {{{{0,-{0}}}}}{1}{{{{{{0}},-{2}}}}} {3}", columnsLength, delimiter, rowsLength, Verticl_Bar);
             string horizontal = new String(Horizontal_Bar, columnsLength + delimiter.Length + rowsLength + 2);
@@ -816,9 +932,14 @@ namespace System.Data
             {
                 formatPartial = Verticl_Bar.ToString();
                 for (int i = 0; i < lastRowFilledCellsCount; i++)
+                {
                     formatPartial += string.Format(cellFormat, i + 1);
+                }
+
                 for (int i = 0; i < lastRowEmptyCellsCount; i++)
+                {
                     formatPartial += new String(' ', columnsLength + delimiter.Length + rowsLength + 2) + Verticl_Bar;
+                }
             }
 
             object[] objects = new object[repeatColumns + 1];
@@ -872,14 +993,21 @@ namespace System.Data
             {
                 IEnumerable<int> ordinals = null;
                 if (string.IsNullOrEmpty(ordinalColumnName))
+                {
                     ordinals = rows.Select(row => row.Table.Rows.IndexOf(row));
+                }
                 else
+                {
                     ordinals = rows.Select(row => (int)row[ordinalColumnName]);
+                }
 
                 objects[0] = "Ordinal";
                 int k = 1;
                 foreach (int ordinal in ordinals)
+                {
                     objects[k++] = (ordinal > -1 ? ordinal : (int?)null);
+                }
+
                 WriteLine(format, objects);
             }
 
@@ -897,7 +1025,9 @@ namespace System.Data
                     {
                         str = toString(obj, row, columns[i]);
                         if (str == null)
+                        {
                             str = "null";
+                        }
                     }
                     else
                     {
@@ -960,22 +1090,34 @@ namespace System.Data
         private static void ConsoleWrite(string value = null, params object[] args)
         {
             if (string.IsNullOrEmpty(value))
+            {
                 return;
+            }
 
             if (args == null)
+            {
                 Console.Write(value);
+            }
             else
+            {
                 Console.Write(value, args);
+            }
         }
 
         private static void ConsoleWriteLine(string value = null, params object[] args)
         {
             if (string.IsNullOrEmpty(value))
+            {
                 Console.WriteLine();
+            }
             else if (args == null)
+            {
                 Console.WriteLine(value);
+            }
             else
+            {
                 Console.WriteLine(value, args);
+            }
         }
 
         #endregion
@@ -985,12 +1127,18 @@ namespace System.Data
         private static void StringBuilderWrite(StringBuilder builder, string value = null, params object[] args)
         {
             if (string.IsNullOrEmpty(value))
+            {
                 return;
+            }
 
             if (args == null)
+            {
                 builder.Append(value);
+            }
             else
+            {
                 builder.AppendFormat(value, args);
+            }
         }
 
         private static void StringBuilderWriteLine(StringBuilder builder, string value = null, params object[] args)
@@ -1017,14 +1165,20 @@ namespace System.Data
         private static void StreamWrite(Stream stream, Encoding encoding, string value = null, params object[] args)
         {
             if (string.IsNullOrEmpty(value))
+            {
                 return;
+            }
 
             byte[] buffer = null;
 
             if (args == null)
+            {
                 buffer = encoding.GetBytes(value);
+            }
             else
+            {
                 buffer = encoding.GetBytes(string.Format(value, args));
+            }
 
             stream.Write(buffer, 0, buffer.Length);
         }
@@ -1036,9 +1190,14 @@ namespace System.Data
             if (string.IsNullOrEmpty(value) == false)
             {
                 if (args == null)
+                {
                     buffer = encoding.GetBytes(value);
+                }
                 else
+                {
                     buffer = encoding.GetBytes(string.Format(value, args));
+                }
+
                 stream.Write(buffer, 0, buffer.Length);
             }
 

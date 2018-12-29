@@ -1,5 +1,8 @@
-﻿E  =>  a T | a T' | a 
-T  =>   b T' | ^
-T' =>  * F  | ^  | aaa
-F  =>  ( E'   |  id | c | d | e  
-E'  =>  + T   | ^ 	
+﻿E => T E'
+E' => + T E' | ^
+T => F T'
+T' => * F T' | ^
+F => ( E ) | d
+
+
+

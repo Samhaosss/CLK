@@ -16,7 +16,7 @@ namespace CLK.GrammarCore
         {
             if (grammarType == GrammarType.ContextFree)
             {
-                throw new IllegalGrammarException("文法不符合上下文无关文法定义");
+                throw new IllegalGrammarException("文法不符合正则文法定义");
             }
         }
         /// <summary>

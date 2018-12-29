@@ -11,6 +11,7 @@ namespace CLK.GrammarCore
     using FirstSetNT = SampleDictionary<Nonterminal>;
     using FollowSet = SampleDictionary<Nonterminal>;
     using LLTable = Dictionary<Nonterminal, Dictionary<Terminal, GrammarStructure>>;
+    using LRTable = SparseTable<int, GrammarSymbol, LRAction>;
     /*
      *  这个类仅仅包含文法相关的算法 不包含任何分析程序
      *  具体而言包含如下算法:
@@ -32,10 +33,18 @@ namespace CLK.GrammarCore
     /// </summary>
     public class CFG : CSG
     {
+        /*
+         * TODO: 添加去除无用符号、空产生式、单产生式算法
+         * 这里依然返回新的文法 不改变原文法，因为继承的缺陷。
+         * 如果修改原文法，在子类的修改必须也在父类中体现。否则如果进行向上转型，则会出现文法不一致
+         * 但要保证父类子类一致 又会有一堆麻烦的操作，与其这样不如直接返回一个新的文法 依然保证文法的不变性
+         * **/
         protected FirstSetNT first;   //每个非终结符的first集
         protected FirstSet firstSet; //每个文法单元的first集
         protected FollowSet follow; //每个非终结符的follow集
         protected PredictionAnalysisTable predictionAnalysisTable; //ll分析表
+        protected ItemsSet itemsSet;  // 有效项目集 
+        protected LRTable lrTable; //LR分析表
         protected new Dictionary<Nonterminal, HashSet<GrammarStructure>> grammarProductions;  // 为方便操作这里故意隐藏了父类实现
         /// <summary>
         /// 从产生式构造上下文无关文法，需要满足文法定义
@@ -53,7 +62,7 @@ namespace CLK.GrammarCore
             this.grammarProductions = new Dictionary<Nonterminal, HashSet<GrammarStructure>>();
             foreach (var ke in base.grammarProductions.Keys)
             {
-                var nt = ke.GetFirstNT();
+                var nt = ke.GetFirstNt();
                 Debug.Assert(nt != null);
                 this.grammarProductions.Add(nt, base.grammarProductions[ke]);
             }
@@ -61,17 +70,49 @@ namespace CLK.GrammarCore
 
         //下面是一堆算法实现
         /****************************************************************************************************************/
+        /// <summary>
+        /// 文法是否规范化：不包含空产生式、无用符号、单产生式
+        /// </summary>
+        /// <returns></returns>
+        public bool IsNormalized()
+        {
 
-        /* 消除无用符号 存在问题
-         * public void EliminateUslessSymbol()
-         {
-             var nts = FindDirectReachable(startNonterminalSymbol);
-             var ntsNotReachAble = nonterminals.Except(nts); //这里需要测试 不确定except究竟是不是想要的返回
-             foreach (var nt in ntsNotReachAble)
-             {
-                 grammarProductions.Remove(nt);
-             }
-         }*/
+            throw new System.NotImplementedException("为实现文法规范化判断");
+        }
+
+
+        /// <summary>
+        /// 获取文法的拓广文法
+        /// </summary>
+        /// <returns></returns>
+        public CFG GetExtendGrammar()
+        {
+            var ls = ToProductionList(grammarProductions);
+            Nonterminal newStart = GetNewStart(startNonterminalSymbol);
+            GrammarProduction gp = new GrammarProduction(new GrammarStructure(newStart),
+                new HashSet<GrammarStructure> { new GrammarStructure(startNonterminalSymbol) });
+            ls.Add(gp);
+            return new CFG(ls, newStart);
+        }
+        private Nonterminal GetNewStart(Nonterminal old)
+        {
+            string newName = old.Value + "'";
+            while (newName.Equals(old.Value))
+            {
+                newName += "'";
+            }
+            return new Nonterminal(newName);
+        }
+
+        /// <summary>
+        /// 获取某左部文法符号所有右部产生式
+        /// </summary>
+        /// <param name="left"></param>
+        /// <returns></returns>
+        public HashSet<GrammarStructure> GetStructures(Nonterminal left)
+        {
+            return grammarProductions[left];
+        }
 
         /// <summary>
         /// 判断文法是否直接或间接左递归
@@ -128,7 +169,7 @@ namespace CLK.GrammarCore
             HashSet<Nonterminal> result = new HashSet<Nonterminal>();
             foreach (var stc in stcs)
             {
-                var nt = stc.GetFirstNT();
+                var nt = stc.FirstNTOrNull();
                 if (nt != null)
                 {
                     result.Add(nt);
@@ -388,10 +429,11 @@ namespace CLK.GrammarCore
         /// <exception cref="IllegalStructureException">非法文法单元</exception>
         public HashSet<Terminal> CalFirstOfStructure(GrammarStructure structure)
         {
-            if (!(structure.Terminals.IsSubsetOf(terminals) && structure.Nonterminals.IsSubsetOf(Nonterminals)))
+            Debug.Assert(structure != null);
+            /*if (!(structure.Terminals.IsSubsetOf(terminals) && structure.Nonterminals.IsSubsetOf(Nonterminals)))
             {
                 throw new IllegalGrammarException("当前文法无法推倒至输入文法单元");
-            }
+            }*/
             var firstSt = new HashSet<Terminal>();
             foreach (GrammarSymbol sym in structure)
             {
@@ -427,6 +469,7 @@ namespace CLK.GrammarCore
                 return follow;
             }
             _follow = new Dictionary<Nonterminal, HashSet<Terminal>>();
+            _follow.Add(startNonterminalSymbol, new HashSet<Terminal> { Terminal.End });
             foreach (var nt in Nonterminals)
             {
                 if (!_follow.ContainsKey(nt)) { _follow.Add(nt, new HashSet<Terminal>()); };
@@ -624,6 +667,8 @@ namespace CLK.GrammarCore
             GetFollow();
 
             LLTable llDs = new LLTable();
+            HashSet<Terminal> terminalsWithEnd = new HashSet<Terminal>(terminals);
+            terminalsWithEnd.Add(Terminal.End);
             foreach (var kv in grammarProductions)
             {
                 llDs.Add(kv.Key, new Dictionary<Terminal, GrammarStructure>());
@@ -631,7 +676,7 @@ namespace CLK.GrammarCore
                 // 检查当前非终结符的follow集
                 foreach (var stc in kv.Value)
                 {
-                    foreach (var ter in terminals)
+                    foreach (var ter in terminalsWithEnd)
                     {
                         if (ter.Equals(Terminal.GetEmpty())) { continue; }
                         if (firstSet[stc].Contains(ter))
@@ -686,6 +731,58 @@ namespace CLK.GrammarCore
                 }
             }
             return true;
+        }
+        /// <summary>
+        /// 获取文法的项目集规范族
+        /// </summary>
+        /// <returns></returns>
+        public ItemsSet GetItemsSet()
+        {
+            if (itemsSet != null)
+            {
+                return itemsSet;
+            }
+            // TODO BUG!!!!!!!!!!!!!
+            VaildItemSet root = new VaildItemSet(this); //创建空串的有效项目集
+            // TODO:这里需要确保 root一定为项目集的第一个元素
+            List<VaildItemSet> result = new List<VaildItemSet>();
+            List<VaildItemSet> newVIS = new List<VaildItemSet> { root };
+            HashSet<GrammarSymbol> all = new HashSet<GrammarSymbol>();
+            all.UnionWith(nonterminals); all.UnionWith(terminals);
+            do
+            {
+                var tmp = new List<VaildItemSet>();
+                foreach (var vi in newVIS)
+                {
+                    result.Add(vi);
+                    foreach (var sym in all)
+                    {
+                        var newVI = vi.Go(sym);
+                        if (newVI != null && !result.Contains(newVI) && !newVIS.Contains(newVI))
+                        {
+                            tmp.Add(newVI);
+                        }
+                    }
+                }
+                newVIS = tmp;
+            } while (newVIS.Count != 0);
+            itemsSet = new ItemsSet(result, root);
+            return itemsSet;
+        }
+
+        /// <summary>
+        /// 获取文法的LR1分析表
+        /// </summary>
+        /// <returns></returns>
+        public LRTable GetLRTable()
+        {
+            if (lrTable != null)
+            {
+                return lrTable;
+            }
+
+            lrTable = GetItemsSet().ToLRTable();
+            return lrTable;
         }
     }
 
