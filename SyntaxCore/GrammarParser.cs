@@ -1,9 +1,11 @@
 ﻿using CLK.AnalysisDs;
 using ErrorCore;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 namespace CLK.GrammarCore.Parser
 {
+    using LRTable = SparseTable<int, GrammarSymbol, LRAction>;
     /*
      * 考虑到随后可能需要更精细的控制 因此把各种分析方法抽象为有内部状态的各个分析器
      * **/
@@ -96,6 +98,7 @@ namespace CLK.GrammarCore.Parser
         private void Clear()
         {
             stateStack.Clear();
+            atl = null;
             root = new Node(currentTarget.StartNonterminalSymbol, null);
             stateStack.Push(endNode);
             stateStack.Push(root);
@@ -107,6 +110,7 @@ namespace CLK.GrammarCore.Parser
         /// </summary>
         public ParserState Reboot()
         {
+            CheckState();
             if (state == ParserState.Succeed || state == ParserState.Unfinished)
             {
                 input.Reset();
@@ -115,12 +119,20 @@ namespace CLK.GrammarCore.Parser
             }
             return state;
         }
+        private void CheckState()
+        {
+            if (state == ParserState.Uninitialezed)
+            {
+                throw new System.Exception("未初始化的分析器不可用");
+            }
+        }
         /// <summary>
         /// 单步识别，需要分析器处于unfinished状态
         /// </summary>
         /// <returns>识别后分析器状态</returns>
         public ParserState Walk()
         {
+            CheckState();
             if (state != ParserState.Unfinished)
             {
                 return state;
@@ -178,9 +190,13 @@ namespace CLK.GrammarCore.Parser
             }
             return state;
         }
-
+        /// <summary>
+        /// 自动分析剩余部分，直到结束
+        /// </summary>
+        /// <returns>分析结果</returns>
         public ParserState Run()
         {
+            CheckState();
             if (state != ParserState.Unfinished)
             {
                 return state;
@@ -192,12 +208,17 @@ namespace CLK.GrammarCore.Parser
             } while (state == ParserState.Unfinished);
             return state;
         }
-
+        /// <summary>
+        /// 获取分析树
+        /// </summary>
+        /// <returns>如果成功则返回atl，否返回Null</returns>
         public ATL GetParseResult()
         {
             return state == ParserState.Succeed ? atl : null;
         }
-
+        /// <summary>
+        /// 获取分析器状态
+        /// </summary>
         public ParserState GetState()
         {
             return state;
@@ -237,6 +258,31 @@ namespace CLK.GrammarCore.Parser
 
     public class LRParser : IParser
     {
+        // 静态数据
+        private CFG targetGammar;
+        private LRTable table;
+
+        //动态数据
+        private Stack<int> stateStack;  //状态栈
+        private Stack<Node> gsStack;    //符号栈
+        private int topState;
+        private Terminal currentTerminal;
+        ParserState state;
+        private Node root;
+        private ATL atl;    //分析树
+        private SymbolStream input;
+        private Node dumbNode;  //和初始状态一起的哑节点
+
+        public LRParser(CFG targetGammar)
+        {
+            this.targetGammar = targetGammar;
+            table = targetGammar.GetLRTable();
+            stateStack = new Stack<int>();
+            gsStack = new Stack<Node>();
+            dumbNode = new Node(new Terminal("-"), null);
+            state = ParserState.Uninitialezed;
+        }
+
         public string GetFailedReason()
         {
             throw new System.NotImplementedException();
@@ -244,22 +290,35 @@ namespace CLK.GrammarCore.Parser
 
         public ATL GetParseResult()
         {
-            throw new System.NotImplementedException();
+            return atl;
         }
 
         public ParserState GetState()
         {
-            throw new System.NotImplementedException();
+            return state;
         }
 
         public ParserState Init(SymbolStream inputStream)
         {
-            throw new System.NotImplementedException();
+            if (!inputStream.HasNext())
+            {
+                throw new System.ArgumentException("输入的空流无法用于分析");
+            }
+            input = inputStream;
+            Clear();
+            return state;
         }
-
-        public void PrintState()
+        private void Clear()
         {
-            throw new System.NotImplementedException();
+            stateStack.Clear();
+            gsStack.Clear();
+            stateStack.Push(0);
+            gsStack.Push(dumbNode);
+            topState = 0;
+            currentTerminal = input.Next();
+            root = null;
+            atl = null;
+            state = ParserState.Unfinished;
         }
 
         public ParserState Reboot()
@@ -269,13 +328,109 @@ namespace CLK.GrammarCore.Parser
 
         public ParserState Run()
         {
-            throw new System.NotImplementedException();
+            CheckState();
+            if (state != ParserState.Unfinished)
+            {
+                return state;
+            }
+            do
+            {
+                Walk();
+            } while (state == ParserState.Unfinished);
+            return state;
         }
 
         public ParserState Walk()
         {
-            throw new System.NotImplementedException();
+            CheckState();
+            if (state != ParserState.Unfinished)
+            {
+                return state;
+            }
+            var action = table.GetItem(topState, currentTerminal);
+            if (action == null)
+            {
+                state = ParserState.Failed;
+                return state;
+            }
+            switch (action.ActionType)
+            {
+                case LRActionType.Shift:
+                    DoShift(action);
+                    break;
+                case LRActionType.Reduce:
+                    DoReduce(action);
+                    break;
+                case LRActionType.Acc:
+                    root = gsStack.Peek();
+                    atl = new ATL(root);
+                    state = ParserState.Succeed;
+                    break;
+                default:
+                    throw new System.Exception("LR分析表错误，action不该对应mov操作");
+            }
+            return state;
         }
+        private void DoShift(LRAction action)
+        {
+            // 移入状态和符号 更新栈顶变量
+            ShiftAction sa = action.Action as ShiftAction;
+            int nextState = sa.NextState;
+            Node newNode = new Node(currentTerminal, null);
+            stateStack.Push(nextState);
+            gsStack.Push(newNode);
+            topState = nextState;
+            currentTerminal = input.Next();
+        }
+        private void DoReduce(LRAction action)
+        {
+            ReduceAction reduceAction = action.Action as ReduceAction;
+            Nonterminal nextNt = reduceAction.ReduceResult;
+            Node newNode = new Node(nextNt, null);
+            int num = reduceAction.ReduceLength;
+            while (num-- > 0)
+            {
+                Node sub = gsStack.Pop();
+                stateStack.Pop();
+                sub.AddFather(newNode);
+                newNode.AddSubNode(sub);
+            }
+            int preState = stateStack.Peek();
+            var next = table.GetItem(preState, nextNt);
+            if (next == null)
+            {
+                state = ParserState.Failed;
+                return;
+            }
+            Debug.Assert(next.ActionType == LRActionType.Move);
+            int nextState = (int)next.Action;
+            stateStack.Push(nextState);
+            gsStack.Push(newNode);
+            topState = nextState;
+        }
+        private void CheckState()
+        {
+            if (state == ParserState.Uninitialezed)
+            {
+                throw new System.Exception("未初始化的分析器不可用");
+            }
+        }
+        public void PrintState()
+        {
+            int len = gsStack.Max(x => x.Data.ToString().Count());
+            int stackW = len + 15;
+            string sp = "-".PadRight(stackW + 2, '-');
+            System.Console.WriteLine("State Stack:     ");
+            foreach (var tmp in stateStack.Zip(gsStack, (sta, gs) => new { sta, gs }))
+            {
+
+                System.Console.WriteLine(sp);
+                string str = "|" + ((tmp.sta.ToString().PadRight(3, ' ') + "| ") + tmp.gs.ToString()).PadRight(stackW, ' ') + "|";
+                System.Console.WriteLine(str);
+            }
+            System.Console.WriteLine(sp);
+        }
+
     }
 
     /// <summary>

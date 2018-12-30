@@ -54,7 +54,8 @@ namespace CLK.GrammarCore
         public CFG(List<GrammarProduction> grammarProductions, Nonterminal startNonterminalSymbol = null) :
             base(grammarProductions, startNonterminalSymbol)
         {
-            if (grammarType == GrammarType.ContextSensitive)
+            // 父类已经对文法实际类型做出了判断，这里需要确认
+            if (grammarType == GrammarType.ContextSensitive || grammarType == GrammarType.ZeroType)
             {
                 throw new IllegalGrammarException("文法不符合上下文无关文法定义");
             }
@@ -64,6 +65,7 @@ namespace CLK.GrammarCore
             {
                 var nt = ke.GetFirstNt();
                 Debug.Assert(nt != null);
+                Debug.Assert(ke.Length() == 1);
                 this.grammarProductions.Add(nt, base.grammarProductions[ke]);
             }
         }
@@ -97,7 +99,7 @@ namespace CLK.GrammarCore
         private Nonterminal GetNewStart(Nonterminal old)
         {
             string newName = old.Value + "'";
-            while (newName.Equals(old.Value))
+            while (newName.Equals(old.Value) || nonterminals.Any(nt => nt.Value.Equals(newName)))
             {
                 newName += "'";
             }
@@ -230,13 +232,6 @@ namespace CLK.GrammarCore
             CFG ng = new CFG(ToProductionList(grammarProductions), startNonterminalSymbol);
             grammarProductions = oldProdutions;
             return ng;
-            //重新生成终结符、非终结符
-            GenSymbols();
-            // TODO: !!!
-            // 这里需要重新计算first follow  目前只是简单的重新置为null 随后得仔细考虑
-            first = null;
-            firstSet = null;
-            follow = null;
         }
         /// <summary>
         /// 将cfg中文法的表示转换为父类中的表示
@@ -356,14 +351,12 @@ namespace CLK.GrammarCore
         /// <returns></returns>
         public FirstSetNT GetFirstSetOfNonterminals()
         {
-            // 懒惰计算
             if (first != null)
             {
                 return first;
             }
             else
             {
-
                 _first = new Dictionary<Nonterminal, HashSet<Terminal>>();
                 CalFirst();
                 first = new FirstSetNT(_first);
@@ -394,29 +387,45 @@ namespace CLK.GrammarCore
             var right = grammarProductions[nt];
             foreach (var stc in right)
             {
-                foreach (GrammarSymbol sym in stc)
+                if (stc[0].GetSymbolType() == SymbolType.Terminal)
                 {
-                    if (sym.GetSymbolType() == SymbolType.Terminal)
+                    _first[nt].Add((Terminal)stc[0]);
+                }
+            }
+            foreach (var stc in right)
+            {
+                int index = 0;
+                if (stc[0].GetSymbolType() != SymbolType.Terminal)
+                {
+                    foreach (GrammarSymbol sym in stc)
                     {
-                        _first[nt].Add((Terminal)sym);
-                        break;
-                    }
-                    else
-                    {
-                        if (_first.ContainsKey((Nonterminal)sym))
+                        if (sym.GetSymbolType() == SymbolType.Nonterminal)
                         {
-                            _first[nt].UnionWith(_first[(Nonterminal)sym]);
+                            if (!_first.ContainsKey((Nonterminal)sym))
+                            {
+                                _first.Add((Nonterminal)sym, new HashSet<Terminal>());
+                                DoCal((Nonterminal)sym);
+                            }
+                            HashSet<Terminal> ntFirst = new HashSet<Terminal>(_first[(Nonterminal)sym]);
+                            if (ntFirst.Contains(Terminal.Empty))
+                            {
+                                ntFirst.Remove(Terminal.Empty);
+                                _first[nt].UnionWith(ntFirst);
+                                //如果最后非终结符还能推出空 则证明当前文法符号可推出空
+                                if (index == stc.Length() - 1)
+                                {
+                                    _first[nt].Add(Terminal.Empty);
+                                }
+                            }
+                            else
+                            {
+                                _first[nt].UnionWith(ntFirst);
+                                break;
+                            }
+
                         }
-                        else
-                        {
-                            _first.Add((Nonterminal)sym, new HashSet<Terminal>());
-                            DoCal((Nonterminal)sym);
-                            _first[nt].UnionWith(_first[(Nonterminal)sym]);
-                        }
-                        if (!_first[(Nonterminal)sym].Contains(Terminal.GetEmpty()))
-                        {
-                            break;
-                        }
+                        else { _first[nt].Add((Terminal)sym); break; }
+                        index++;
                     }
                 }
             }
@@ -430,11 +439,8 @@ namespace CLK.GrammarCore
         public HashSet<Terminal> CalFirstOfStructure(GrammarStructure structure)
         {
             Debug.Assert(structure != null);
-            /*if (!(structure.Terminals.IsSubsetOf(terminals) && structure.Nonterminals.IsSubsetOf(Nonterminals)))
-            {
-                throw new IllegalGrammarException("当前文法无法推倒至输入文法单元");
-            }*/
             var firstSt = new HashSet<Terminal>();
+            int index = 0;
             foreach (GrammarSymbol sym in structure)
             {
                 if (sym.GetSymbolType() == SymbolType.Terminal)
@@ -445,12 +451,23 @@ namespace CLK.GrammarCore
                 else
                 {
                     // 这里调用First() 而不是直接过去first
-                    firstSt.UnionWith(GetFirstSetOfNonterminals()[(Nonterminal)sym]);
-                    if (!first[(Nonterminal)sym].Contains(Terminal.GetEmpty()))
+                    var tmp = new HashSet<Terminal>(GetFirstSetOfNonterminals()[(Nonterminal)sym]);
+                    if (tmp.Contains(Terminal.Empty))
                     {
+                        tmp.Remove(Terminal.Empty);
+                        firstSt.UnionWith(tmp);
+                        if (index == structure.Length() - 1)
+                        {
+                            firstSt.Add(Terminal.Empty);
+                        }
+                    }
+                    else
+                    {
+                        firstSt.UnionWith(tmp);
                         break;
                     }
                 }
+                index++;
             }
             return firstSt;
         }
@@ -470,22 +487,17 @@ namespace CLK.GrammarCore
             }
             _follow = new Dictionary<Nonterminal, HashSet<Terminal>>();
             _follow.Add(startNonterminalSymbol, new HashSet<Terminal> { Terminal.End });
-            foreach (var nt in Nonterminals)
-            {
-                if (!_follow.ContainsKey(nt)) { _follow.Add(nt, new HashSet<Terminal>()); };
-            }
             do
             {
                 change2 = false;
                 CalFollow();
-
-            } while (change);
+            } while (change2);
             follow = new FollowSet(_follow);
             return follow;
         }
         private void CalFollow()
         {
-            // 对每一个产生式的右部文法单元进行迭代
+
             foreach (var pro in grammarProductions)
             {
                 foreach (var strc in pro.Value)
@@ -496,10 +508,19 @@ namespace CLK.GrammarCore
                         if (strc[i].GetSymbolType() == SymbolType.Nonterminal)
                         {
                             Nonterminal current = (Nonterminal)strc[i];
+                            if (!_follow.ContainsKey(current))
+                            {
+                                _follow.Add(current, new HashSet<Terminal>());
+                            }
+
                             int startCount = _follow[current].Count;
                             //如果为最后一个非终结符 则将左部文法符号的follow加入
                             if (i == strc.Length() - 1)
                             {
+                                if (!_follow.ContainsKey(pro.Key))
+                                {
+                                    _follow.Add(pro.Key, new HashSet<Terminal>());
+                                }
                                 _follow[current].UnionWith(_follow[pro.Key]);
                             }
                             else
@@ -508,10 +529,18 @@ namespace CLK.GrammarCore
                                 var tf = CalFirstOfStructure(tmp);
                                 if (tf.Contains(Terminal.GetEmpty()))
                                 {
+                                    tf.Remove(Terminal.Empty);
+                                    _follow[current].UnionWith(tf);
+                                    if (!_follow.ContainsKey(pro.Key))
+                                    {
+                                        _follow.Add(pro.Key, new HashSet<Terminal>());
+                                    }
                                     _follow[current].UnionWith(_follow[pro.Key]);
-                                    tf.Remove(Terminal.GetEmpty());
                                 }
-                                _follow[current].UnionWith(tf);
+                                else
+                                {
+                                    _follow[current].UnionWith(tf);
+                                }
                             }
                             if (startCount != _follow[current].Count) { change2 = true; }
                         }
@@ -545,7 +574,7 @@ namespace CLK.GrammarCore
         /// 判断文法是否满足 递归调用预测分析程序的要求
         /// </summary>
         /// <returns></returns>
-        public bool IsSatisfyPredictionRecAnalysis()
+        public bool IsSatisfyRecPredictionAnalysis()
         {
             if (IsLeftRecursive())
             {
@@ -579,7 +608,7 @@ namespace CLK.GrammarCore
         /// <returns></returns>
         public bool RecursiveAnalyze(SymbolStream symbolIter)
         {
-            if (!IsSatisfyPredictionRecAnalysis())
+            if (!IsSatisfyRecPredictionAnalysis())
             {
                 return false;
             }
@@ -661,7 +690,7 @@ namespace CLK.GrammarCore
             }
             if (!IsSatisfyNonrecuPredictionAnalysis())
             {
-                return null;
+                throw new IllegalGrammarException("当前文法不使用于非递归预测分析");
             }
             GetFirstSetOfStructure();
             GetFollow();
@@ -710,7 +739,7 @@ namespace CLK.GrammarCore
             GetFirstSetOfStructure();
             GetFollow();
             //满足递归预测分析 则满足了first集之间的交集为空
-            if (!IsSatisfyPredictionRecAnalysis())
+            if (!IsSatisfyRecPredictionAnalysis())
             {
                 return false;
             }
@@ -749,6 +778,7 @@ namespace CLK.GrammarCore
             List<VaildItemSet> newVIS = new List<VaildItemSet> { root };
             HashSet<GrammarSymbol> all = new HashSet<GrammarSymbol>();
             all.UnionWith(nonterminals); all.UnionWith(terminals);
+            Debug.Assert(!terminals.Contains(Terminal.Empty));
             do
             {
                 var tmp = new List<VaildItemSet>();

@@ -22,6 +22,10 @@ namespace CLK.AnalysisDs
 
         public void AddSubNode(Node subNode) { subNodes.Add(subNode); }
 
+        public void AddFather(Node father)
+        {
+            this.father = father;
+        }
         public override bool Equals(object obj)
         {
             var node = obj as Node;

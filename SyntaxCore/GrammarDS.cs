@@ -590,6 +590,9 @@ namespace CLK.GrammarCore
                 throw new IllegalGrammarException("不符合文法定义：输入文法异常，必须确保所有的非终结符出现在某个文法产生式的左部");
             }
             grammarType = GType();
+            /*
+             * 到了这里就可以确定 创建的文法一定符合要求：每个非终结符必须出现在某个文法产生式左部、右部文法单元之间不重复、文法单元符合要求。
+             * **/
         }
         //将传出的production加入dic
         private void AddToDic(List<GrammarProduction> grammarProductions)
@@ -623,6 +626,10 @@ namespace CLK.GrammarCore
                 {
                     return false;
                 }
+            }
+            foreach (var value in grammarProductions.Values)
+            {
+                value.TrimExcess();
             }
             return true;
         }
@@ -664,14 +671,8 @@ namespace CLK.GrammarCore
         //这里可以写的好看点 但没必要
         protected void GenSymbols()
         {
-            if (nonterminals == null)
-            {
-                nonterminals = new HashSet<Nonterminal>();
-            }
-            if (terminals == null)
-            {
-                terminals = new HashSet<Terminal>();
-            }
+            terminals = new HashSet<Terminal>();
+            nonterminals = new HashSet<Nonterminal>();
             foreach (var left in grammarProductions.Keys)
             {
                 nonterminals.UnionWith(left.Nonterminals);
@@ -682,7 +683,10 @@ namespace CLK.GrammarCore
                     terminals.UnionWith(right.Terminals);
                 }
             }
-            terminals.Remove(Terminal.Empty);
+            if (terminals.Contains(Terminal.Empty))
+            {
+                terminals.Remove(Terminal.Empty);   //空不属于终结符集
+            }
             nonterminals.TrimExcess();
             terminals.TrimExcess();
         }
@@ -704,6 +708,11 @@ namespace CLK.GrammarCore
         }
         public HashSet<GrammarStructure> GetStructures(GrammarStructure structure)
         {
+            if (!grammarProductions.ContainsKey(structure))
+            {
+                return null;
+            }
+
             return grammarProductions[structure];
         }
         public List<GrammarSymbol> GetAllSymbols()
@@ -713,13 +722,19 @@ namespace CLK.GrammarCore
             {
                 result.Add(ter);
             }
-
             foreach (var nt in nonterminals)
             {
                 result.Add(nt);
             }
-
             return result;
+        }
+        /// <summary>
+        /// 判断文法是否包含空产生式
+        /// </summary>
+        /// <returns></returns>
+        public bool HasEmptyProduction()
+        {
+            return grammarProductions.Any(p => p.Value.Any(s => s.IsEmpty()));
         }
         // TODO: 需要添加一些适用于所用文法的算法
     }

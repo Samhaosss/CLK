@@ -31,11 +31,34 @@ namespace CLK.Client
 
             Grammar grammar = DefaultGrammarFactory.CreateFromFile(@"C:\Users\sam\source\repos\CLK\SyntaxCore\demoGrammar.txt");
             CFG cfg = (CFG)grammar;
-            Console.WriteLine($"{cfg.GetFirstSetOfStructure()}");
-            Console.WriteLine($"{cfg.GetFollow()}");
-            var table = cfg.GetPATable();
-            table.Print();
-            LLParser llParser = new LLParser(cfg);
+            // var table = cfg.GetLRTable();
+            Console.WriteLine("LRTable");
+            var lrTable = cfg.GetLRTable();
+            lrTable.Print();
+            var items = cfg.GetItemsSet();
+            Console.WriteLine($"Ltems:\n {items}");
+            LRParser lRParser = new LRParser(cfg);
+            SymbolStream lrInput = DefaultSymbolStreamFactory.CreateFromStr(cfg, "ccdcd");
+            lRParser.Init(lrInput);
+            do
+            {
+                lRParser.Walk();
+                lRParser.PrintState();
+            } while (lRParser.GetState() == ParserState.Unfinished);
+            var atl = lRParser.GetParseResult();
+            atl.Print();
+            /* Console.WriteLine(grammar);
+             Console.WriteLine($"First:\n{cfg.GetFirstSetOfNonterminals()}");
+             Console.WriteLine($"FirstSet:\n{cfg.GetFirstSetOfStructure()}");
+             Console.WriteLine($"Follow:\n{cfg.GetFollow()}");
+             Console.WriteLine("PATABLE");
+             //var table = cfg.GetPATable();
+             //table.Print();
+             Console.WriteLine("itemsSet");
+             var itemsSet = cfg.GetItemsSet();
+             Console.WriteLine(itemsSet);*/
+
+            /*LLParser llParser = new LLParser(cfg);
             SymbolStream symbolStream = DefaultSymbolStreamFactory.CreateFromStr(cfg, "d+(d+d)");
             llParser.Init(symbolStream);
             int tmp = 0;
@@ -50,7 +73,7 @@ namespace CLK.Client
             if (atl != null)
             {
                 atl.Print();
-            }
+            }*/
             /*  RG newG = (RG)grammar;
               if (grammar.IsLeftRecursive())
               {

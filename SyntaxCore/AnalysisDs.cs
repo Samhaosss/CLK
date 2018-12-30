@@ -341,7 +341,6 @@ namespace CLK.AnalysisDs
                    EqualityComparer<Nonterminal>.Default.Equals(left, item.left) &&
                    EqualityComparer<GrammarStructure>.Default.Equals(right, item.right) &&
                    progress == item.progress &&
-                   len == item.len &&
                    EqualityComparer<Terminal>.Default.Equals(lookahead, item.lookahead);
         }
 
@@ -391,10 +390,13 @@ namespace CLK.AnalysisDs
         /// <param name="grammar"></param>
         public VaildItemSet(CFG grammar)
         {
-            var tmp = grammar.GetStructures(grammar.StartNonterminalSymbol);
-            // 接受一个上下文无关文法 构建空字符的有效项目集
-            this.grammar = tmp.Count != 1 ? grammar.GetExtendGrammar() : grammar;
+            if (grammar.HasEmptyProduction())
+            {
+                throw new System.NotImplementedException("sorry,目前未完成LR分析包含空产生式文法的算法");
+            }
+            this.grammar = grammar.GetExtendGrammar();
             var starts = this.grammar.GetStructures(this.grammar.StartNonterminalSymbol);
+            Console.WriteLine(this.grammar.ToString());
             Debug.Assert(starts.Count == 1); // 拓广文法开始符号仅有一个右部产生式
             // S' => . S , $    
             LRItem item = new LRItem(this.grammar.StartNonterminalSymbol, starts.First(), Terminal.End);
@@ -495,8 +497,23 @@ namespace CLK.AnalysisDs
         {
             // 只要项目集合相同则为等价
             var set = obj as VaildItemSet;
-            return set != null &&
-                   items.SequenceEqual(set.items);
+            bool result = true;
+            if (set != null && set.Items.Count == items.Count)
+            {
+                foreach (var item in items)
+                {
+                    if (!set.Items.Contains(item))
+                    {
+                        result = false;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                result = false;
+            }
+            return result;
         }
         //TODO:这里的hashcode计算可能不符合要求
         public override int GetHashCode()
@@ -595,8 +612,9 @@ namespace CLK.AnalysisDs
                             table[state].Add(lookahead, new LRAction(action, actionItem));
                             break;
                         //无论是
-                        case LRItemState.ReductionExpect:
+                        case LRItemState.ReductionExpect:   //待规约项目
                             GrammarSymbol _input = item.GetCurrent();
+                            Debug.Assert(itemSet.Value.Grammar.Nonterminals.Contains(_input));
                             int _nextState = itemSetClass.IndexOf(itemSet.Value.Son[_input]);
                             if (!table[state].ContainsKey(_input))
                             {
