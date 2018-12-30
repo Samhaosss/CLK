@@ -1,5 +1,6 @@
 ﻿using CLK.AnalysisDs;
 using ErrorCore;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -41,6 +42,7 @@ namespace CLK.GrammarCore.Parser
         ParserState Walk(); //单步识别
         ParserState Run();  //从当前起 连续识别到最后
         ParserState GetState(); //获取状态
+        void ReportAnalyzeResult(); //报告分析结果
         void PrintState(); // 打印当前分析状态到终端
         ATL GetParseResult();   //获取分析树  
         string GetFailedReason();   //获取失败原因
@@ -254,6 +256,18 @@ namespace CLK.GrammarCore.Parser
             }
             System.Console.WriteLine(sp);
         }
+
+        public void ReportAnalyzeResult()
+        {
+            if (state == ParserState.Failed || state == ParserState.Succeed)
+            {
+                Console.WriteLine($"Analyze {state} for:\n {input}");
+            }
+            else
+            {
+                Console.WriteLine("Not finished yet or not inited ,can't report");
+            }
+        }
     }
 
     public class LRParser : IParser
@@ -430,7 +444,17 @@ namespace CLK.GrammarCore.Parser
             }
             System.Console.WriteLine(sp);
         }
-
+        public void ReportAnalyzeResult()
+        {
+            if (state == ParserState.Failed || state == ParserState.Succeed)
+            {
+                Console.WriteLine($"Analyze {state} for:\n {input}");
+            }
+            else
+            {
+                Console.WriteLine("Not finished yet or not inited ,can't report");
+            }
+        }
     }
 
     /// <summary>

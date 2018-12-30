@@ -1,19 +1,7 @@
-﻿using CLK.LexicalCore.DemoLexer;
+﻿using CLK.DemoInterpreter.DemoLexer;
 using System;
-/* *******************************************************
- *  更新日志:
- *      12.4    
- *          完成：     词法分析完善
- *          待完成：   词法bug修复
- *      12.5    
- *          完成：     demo词法基本没有问题，加入了简单表达式分析
- *          待完成：   语法拓展、程序结构修改
- *          
- * ******************************************************/
-/*
- * 语法core，目前想到的有：demo语法分析器、first集、follow集、分析表生成算法
- * **/
-namespace CLK.SyntaxCore
+
+namespace CLK.Interpreter
 {
     // 翻译目标 表达式计算
     public class SampleSyntaxParser

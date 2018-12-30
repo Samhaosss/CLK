@@ -703,7 +703,19 @@ namespace CLK.GrammarCore
                 var index = tmp.LastIndexOf('|');
                 tmp = tmp.Remove(index - 1) + "\n";
             }
-            string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}";
+            string termi = "Terminals:{";
+            foreach (var ter in Terminals)
+            {
+                termi += ter.ToString() + ",";
+            }
+            termi += "}\n";
+            string nont = "Nonterminals:{";
+            foreach (var nt in nonterminals)
+            {
+                nont += nt.ToString() + ",";
+            }
+            nont += "}\n";
+            string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}\n{termi}{nont}";
             return grammarStr;
         }
         public HashSet<GrammarStructure> GetStructures(GrammarStructure structure)

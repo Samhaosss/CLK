@@ -1,14 +1,16 @@
-﻿using ErrorCore;
+﻿
+using CLK.Interpreter.DemoLexer;
+using ErrorCore;
 using Newtonsoft.Json;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 /*
- * LexicalCore的内容可能有：demo分析器、文法转dfa算法、dfa极小化
- * 这里实现了一个简单的词法分析，可以用于将来的demo解释器
- * **/
-namespace CLK.LexicalCore
+* LexicalCore的内容可能有：demo分析器、文法转dfa算法、dfa极小化
+* 这里实现了一个简单的词法分析，可以用于将来的demo解释器
+* **/
+namespace CLK.DemoInterpreter
 {
     namespace DemoLexer
     {
@@ -41,7 +43,7 @@ namespace CLK.LexicalCore
             private static string wordSetFileName = "DemoLexerWords.json";
             public static void SerializeWordSet()
             {
-                var special = new LexicalCore.DemoLexer.SpecialWordSet();
+                var special = new DemoLexer.SpecialWordSet();
                 special.Stepup();
                 string configFilePath = GlobalConfig.ConfigManager.GetConfigFilePath() + System.IO.Path.DirectorySeparatorChar
                     + wordSetFileName;

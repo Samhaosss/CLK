@@ -34,6 +34,12 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="ConsoleTables, Version=2.2.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\ConsoleTables.2.2.0\lib\net40\ConsoleTables.dll</HintPath>
+    </Reference>
+    <Reference Include="log4net, Version=2.0.8.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <HintPath>..\packages\log4net.2.0.8\lib\net45-full\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json, Version=12.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <HintPath>..\packages\Newtonsoft.Json.12.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -55,16 +61,16 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\DemoInterpreter\DemoInterpreter.csproj">
+      <Project>{f9d3c55e-9822-4907-b0c8-4563f4f2a20b}</Project>
+      <Name>DemoInterpreter</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ErrorCore\ErrorCore.csproj">
       <Project>{8dd58462-39ac-4b43-9adb-b3197b63ffb7}</Project>
       <Name>ErrorCore</Name>
     </ProjectReference>
-    <ProjectReference Include="..\LexicalCore\DemoInterpreter.csproj">
-      <Project>{8f7e5bb9-8748-423c-9130-d6ef127284d3}</Project>
-      <Name>DemoInterpreter</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\SyntaxCore\GrammarCore.csproj">
-      <Project>{73b073df-883b-41fb-b30a-fdbb25094953}</Project>
+    <ProjectReference Include="..\GrammarCore\GrammarCore.csproj">
+      <Project>{6e74a4e4-35a4-4589-8201-9ef2dc6bb792}</Project>
       <Name>GrammarCore</Name>
     </ProjectReference>
   </ItemGroup>

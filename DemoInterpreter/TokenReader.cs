@@ -3,7 +3,7 @@ using System.Linq;
 /*
  * 实现了简单了流式读取
  * **/
-namespace CLK.LexicalCore
+namespace CLK.Interpreter
 {
     namespace DemoLexer
     {

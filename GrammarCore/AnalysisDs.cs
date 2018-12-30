@@ -55,6 +55,36 @@ namespace CLK.AnalysisDs
             return keySet[key];
         }
 
+        public void Print()
+        {
+            int lines = keySet.Count;
+            int mid = lines / 2;
+            int leftW = 10;
+            int rightW = 30;
+            string spe = "-".PadRight(leftW + rightW + 2, '-');
+            string leftTitle = "|    ".PadRight(leftW, ' ') + "|";
+            string rightTitle = "Set".PadRight(rightW, ' ') + "|";
+            Console.WriteLine(spe);
+            Console.WriteLine(leftTitle + rightTitle);
+            Console.WriteLine(spe);
+            foreach (var it in keySet.Select((x, i) => new { Value = x, Index = i }))
+            {
+                var item = it.Value;
+                int i = it.Index;
+                string left = "|";
+                left += item.Key;
+                left = left.PadRight(leftW, ' ');
+                string right = "|";
+                foreach (var ter in item.Value)
+                {
+                    right += ter + ", ";
+                }
+
+                right = right.PadRight(rightW, ' ') + "|";
+                Console.WriteLine(left + right);
+                Console.WriteLine(spe);
+            }
+        }
         public override int GetHashCode()
         {
             return -25021980 + EqualityComparer<Dictionary<T, HashSet<Terminal>>>.Default.GetHashCode(keySet);
@@ -104,6 +134,11 @@ namespace CLK.AnalysisDs
         }
         public V GetItem(R row, C col)
         {
+            if (!table.ContainsKey(row) || !table[row].ContainsKey(col))
+            {
+                return default(V);
+            }
+
             return table[row][col];
         }
         public void Print()
@@ -515,6 +550,30 @@ namespace CLK.AnalysisDs
             }
             return result;
         }
+        internal void Print()
+        {
+            int lines = items.Count;
+            int mid = lines / 2;
+            int leftW = 10;
+            int rightW = 30;
+            string spe = "-".PadRight(leftW + rightW + 2, '-');
+            Console.WriteLine(spe);
+            foreach (var it in items.Select((x, i) => new { Value = x, Index = i }))
+            {
+                var item = it.Value;
+                int i = it.Index;
+                string left = "|";
+                if (i == mid)
+                {
+                    left += prefix;
+                }
+                left = left.PadRight(leftW, ' ');
+                string right = "|";
+                right += item;
+                right = right.PadRight(rightW, ' ') + "|";
+                Console.WriteLine(left + right);
+            }
+        }
         //TODO:这里的hashcode计算可能不符合要求
         public override int GetHashCode()
         {
@@ -641,6 +700,13 @@ namespace CLK.AnalysisDs
             tableBuf = new LRTable(table, cols);
             return tableBuf;
 
+        }
+        public void Print()
+        {
+            foreach (var vt in itemSetClass)
+            {
+                vt.Print();
+            }
         }
 
         public override string ToString()

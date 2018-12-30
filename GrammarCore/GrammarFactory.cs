@@ -352,13 +352,26 @@ namespace CLK.GrammarCore.Factory
     /// </summary>
     public class DefaultSymbolStreamFactory
     {
+        /// <summary>
+        /// 为文法从input构建输入流
+        /// 如果文法终结符长度均为1，则无需空格分割，空格会被自动忽略
+        /// 如果文法终结符长度不均为1，则需要空格分割
+        /// </summary>
+        /// <param name="grammar">目标文法</param>
+        /// <param name="input">输入</param>
+        /// <returns>终结符输入流</returns>
         public static SymbolStream CreateFromStr(CFG grammar, string input)
         {
+            bool SingleLen = grammar.Terminals.All(x => x.Value.Count() == 1);
             List<Terminal> stream = new List<Terminal>();
-            if (grammar.Terminals.All(X => X.Value.Count() == 1))
+            if (SingleLen)
             {
                 foreach (var ch in input)
                 {
+                    if (ch.Equals(' ') || ch.Equals('\r') || ch.Equals('\t'))
+                    {
+                        continue;
+                    }
                     Terminal terminal = DefaultSymbolFactory.CreateTerminal(ch);
                     if (!grammar.Terminals.Contains(terminal))
                     {
@@ -366,12 +379,26 @@ namespace CLK.GrammarCore.Factory
                     }
                     stream.Add(terminal);
                 }
-                stream.Add(Terminal.End);
+
             }
             else
             {
-                throw new System.NotImplementedException("未完成复杂输入流处理");
+                var ters = input.Split(' ').Select(X => X.Trim());
+                foreach (var ter in ters)
+                {
+                    Terminal terminal = DefaultSymbolFactory.CreateTerminal(ter);
+                    if (!grammar.Terminals.Contains(terminal))
+                    {
+                        throw new ErrorCore.IllegalChException("输入流包含不存在于文法终结符集的字符");
+                    }
+                    stream.Add(terminal);
+                }
             }
+            if (stream.Count == 0)
+            {
+                throw new System.ArgumentException($"输入串<{input}>不包含有效终结符");
+            }
+            stream.Add(Terminal.End);
             return new SymbolStream(stream);
         }
     }

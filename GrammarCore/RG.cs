@@ -218,7 +218,6 @@ namespace CLK.GrammarCore
             foreach (var kv in dic)
             {
                 DataRow row = table.NewRow();
-                row[firstCol] = kv.Key.ToString();
                 foreach (var v in kv.Value)
                 {
                     row[v.Key.ToString()] = HashToString(v.Value);

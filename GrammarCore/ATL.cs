@@ -1,4 +1,5 @@
 ﻿using CLK.GrammarCore;
+using System;
 using System.Collections.Generic;
 namespace CLK.AnalysisDs
 {
@@ -19,9 +20,14 @@ namespace CLK.AnalysisDs
         public List<Node> SubNodes { get => subNodes; }
         public GrammarSymbol Data { get => data; }
         public Node Father { get => father; }
-
+        /// <summary>
+        /// 添加子节点
+        /// </summary>
         public void AddSubNode(Node subNode) { subNodes.Add(subNode); }
-
+        /// <summary>
+        /// 添加父节点，如果已存在则覆盖
+        /// </summary>
+        /// <param name="father"></param>
         public void AddFather(Node father)
         {
             this.father = father;
@@ -47,7 +53,10 @@ namespace CLK.AnalysisDs
     public class ATL
     {
         private Node root;
-
+        /// <summary>
+        /// 使用根节点创建树
+        /// </summary>
+        /// <param name="root"></param>
         public ATL(Node root)
         {
             this.root = root;
@@ -57,24 +66,15 @@ namespace CLK.AnalysisDs
         /// </summary>
         public void Print()
         {
-            DoPrint(root);
+            DoPrint(root, "", true);
         }
-        private void DoPrint(Node node)
+        private void DoPrint(Node node, string indent, bool last)
         {
-            System.Console.Write($"{node}:[");
-            if (node.SubNodes.Count == 0)
+            Console.WriteLine(indent + "+-" + node.ToString());
+            indent += last ? "   " : "|    ";
+            for (int i = 0; i < node.SubNodes.Count; i++)
             {
-                System.Console.WriteLine("]");
-                return;
-            }
-            foreach (var sub in node.SubNodes)
-            {
-                System.Console.Write($"{sub},");
-            }
-            System.Console.WriteLine("]");
-            foreach (var sub in node.SubNodes)
-            {
-                DoPrint(sub);
+                DoPrint(node.SubNodes[i], indent, i == node.SubNodes.Count - 1);
             }
         }
     }
