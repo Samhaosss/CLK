@@ -314,7 +314,21 @@ namespace CLK.GrammarCore
                 var index = tmp.LastIndexOf('|');
                 tmp = tmp.Remove(index - 1) + "\n";
             }
-            string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}";
+            string termi = "Terminals:{ ";
+            foreach (var ter in terminals)
+            {
+                termi += ter + ",";
+            }
+
+            termi += "}";
+            string nt = "Nonterminals:{ ";
+            foreach (var n in nonterminals)
+            {
+                nt += n + ",";
+            }
+
+            nt += "}";
+            string grammarStr = $"Grammar:\n{tmp}Type:{grammarType}\nTerminals{termi}\nNonterminals{nt}";
             return grammarStr;
         }
 
@@ -387,6 +401,7 @@ namespace CLK.GrammarCore
             var right = grammarProductions[nt];
             foreach (var stc in right)
             {
+                // 这里同时加入了空
                 if (stc[0].GetSymbolType() == SymbolType.Terminal)
                 {
                     _first[nt].Add((Terminal)stc[0]);
@@ -439,6 +454,12 @@ namespace CLK.GrammarCore
         public HashSet<Terminal> CalFirstOfStructure(GrammarStructure structure)
         {
             Debug.Assert(structure != null);
+            //TODO 这里是否需要添加对输入文法单元得检查？
+            if (!structure.Nonterminals.IsSubsetOf(nonterminals))
+            {
+                throw new IllegalStructureException($"用于计算first集得文法单元必需由当前文法得终结符与非终结符构成:{structure}");
+            }
+
             var firstSt = new HashSet<Terminal>();
             int index = 0;
             foreach (GrammarSymbol sym in structure)
@@ -485,8 +506,10 @@ namespace CLK.GrammarCore
             {
                 return follow;
             }
-            _follow = new Dictionary<Nonterminal, HashSet<Terminal>>();
-            _follow.Add(startNonterminalSymbol, new HashSet<Terminal> { Terminal.End });
+            _follow = new Dictionary<Nonterminal, HashSet<Terminal>>
+            {
+                { startNonterminalSymbol, new HashSet<Terminal> { Terminal.End } }
+            };
             do
             {
                 change2 = false;
@@ -497,7 +520,7 @@ namespace CLK.GrammarCore
         }
         private void CalFollow()
         {
-
+            //对于每一个非终结符得产生式进行遍历 计算每个非终结符的follow
             foreach (var pro in grammarProductions)
             {
                 foreach (var strc in pro.Value)
@@ -525,6 +548,7 @@ namespace CLK.GrammarCore
                             }
                             else
                             {
+
                                 var tmp = strc.GetRange(i + 1, strc.Length() - i - 1);
                                 var tf = CalFirstOfStructure(tmp);
                                 if (tf.Contains(Terminal.GetEmpty()))
@@ -567,6 +591,11 @@ namespace CLK.GrammarCore
                     terminals.UnionWith(right.Terminals);
                 }
             }
+            if (terminals.Contains(Terminal.Empty))
+            {
+                terminals.Remove(Terminal.Empty);
+            }
+
             nonterminals.TrimExcess();
             terminals.TrimExcess();
         }
@@ -696,8 +725,11 @@ namespace CLK.GrammarCore
             GetFollow();
 
             LLTable llDs = new LLTable();
-            HashSet<Terminal> terminalsWithEnd = new HashSet<Terminal>(terminals);
-            terminalsWithEnd.Add(Terminal.End);
+            HashSet<Terminal> terminalsWithEnd = new HashSet<Terminal>(terminals)
+            {
+                Terminal.End
+            };
+            Debug.Assert(!terminals.Contains(Terminal.Empty));
             foreach (var kv in grammarProductions)
             {
                 llDs.Add(kv.Key, new Dictionary<Terminal, GrammarStructure>());
@@ -705,6 +737,7 @@ namespace CLK.GrammarCore
                 // 检查当前非终结符的follow集
                 foreach (var stc in kv.Value)
                 {
+                    // 下面这个写法很显然需要修改 但现在挺稳定 所以先保留
                     foreach (var ter in terminalsWithEnd)
                     {
                         if (ter.Equals(Terminal.GetEmpty())) { continue; }

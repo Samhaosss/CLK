@@ -383,13 +383,14 @@ namespace CLK.GrammarCore.Factory
             }
             else
             {
-                var ters = input.Split(' ').Select(X => X.Trim());
+                input = input.Trim();
+                var ters = input.Split(' ').Select(X => X.Trim()).Where(X => !X.Equals(""));
                 foreach (var ter in ters)
                 {
                     Terminal terminal = DefaultSymbolFactory.CreateTerminal(ter);
                     if (!grammar.Terminals.Contains(terminal))
                     {
-                        throw new ErrorCore.IllegalChException("输入流包含不存在于文法终结符集的字符");
+                        throw new ErrorCore.IllegalChException($"输入流包含不存在于文法终结符集的字符:{terminal}");
                     }
                     stream.Add(terminal);
                 }

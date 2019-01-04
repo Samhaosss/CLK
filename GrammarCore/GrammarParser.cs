@@ -53,7 +53,7 @@ namespace CLK.GrammarCore.Parser
     /// </summary>
     public class LLParser : IParser
     {
-        //TODO:BUGS HERE
+        //TODO:BUGS HERE LL分析器还存在问题
         // 分析器的静态数据： 分析表、文法、结束节点
         private CFG currentTarget;  //需要获取开始符号
         private PredictionAnalysisTable llTable;
@@ -92,6 +92,7 @@ namespace CLK.GrammarCore.Parser
         /// <returns></returns>
         public ParserState Init(SymbolStream inputStream)
         {
+            // TODO: 在这里添加流检查 不过也可以在inputStream的构造中限制
             state = ParserState.Unfinished;
             input = inputStream;
             Clear();
@@ -101,7 +102,8 @@ namespace CLK.GrammarCore.Parser
         {
             stateStack.Clear();
             atl = null;
-            root = new Node(currentTarget.StartNonterminalSymbol, null);
+            // TODO:这个构造移到构造函数
+            root = new Node(currentTarget.StartNonterminalSymbol, null);//stupid here 
             stateStack.Push(endNode);
             stateStack.Push(root);
             currentTerminal = input.Next();

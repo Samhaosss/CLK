@@ -187,6 +187,11 @@ namespace CLK.AnalysisDs
         /// <returns>Structure</returns>
         public GrammarStructure GetItem(Nonterminal row, Terminal col)
         {
+            if (!table.ContainsKey(row) || !table[row].ContainsKey(col))
+            {
+                return null;
+            }
+
             return table[row][col];
         }
         public Dictionary<Terminal, GrammarStructure> GetLine(Nonterminal row)

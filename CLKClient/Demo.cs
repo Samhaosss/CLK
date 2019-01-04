@@ -26,9 +26,20 @@ namespace CLK.Client
         }
         public GrammarLibClient(string filePath)
         {
-            grammar = DefaultGrammarFactory.CreateCFGFromFile(filePath);
-            state = ClientState.Init;
+            try
+            {
+
+                grammar = DefaultGrammarFactory.CreateCFGFromFile(filePath);
+                state = ClientState.Init;
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Error:" + e.Message);
+                grammar = null;
+                state = ClientState.Hungry;
+            }
         }
+
         public void Startup()
         {
             PrintInfo();
@@ -60,6 +71,11 @@ namespace CLK.Client
                 if (inputStr.Equals("info"))
                 {
                     parse.ReportAnalyzeResult();
+                    if (parse.GetState() == ParserState.Succeed)
+                    {
+                        parse.GetParseResult().Print();
+                        Console.WriteLine();
+                    }
                 }
                 else if (inputStr.Equals("restart"))
                 {
@@ -76,6 +92,11 @@ namespace CLK.Client
                     input = null;
                     break;
                 }
+
+                else if (inputStr.Equals("help"))
+                {
+                    Help();
+                }
                 else
                 {
                     HandleError();
@@ -84,14 +105,15 @@ namespace CLK.Client
         }
         private void HandleRuning()
         {
+            var inputStr = "";
             while (true)
             {
-                PrintState();
-                string inputStr = Console.ReadLine();
-                var tmp = inputStr.Split(' ').Select(X => X.Trim()).Where(x => !x.Equals("")).ToArray();
+                inputStr = GetInput();
+                var tmp = inputStr.Split(empty, StringSplitOptions.RemoveEmptyEntries);
                 if (inputStr.Equals("next") || inputStr.Equals("n"))
                 {
                     var st = parse.Walk();
+                    parse.PrintState();
                     if (st != ParserState.Unfinished)
                     {
                         state = ClientState.Finished;
@@ -106,6 +128,7 @@ namespace CLK.Client
                         parse.Walk();
                     }
                     state = ClientState.Finished;
+                    parse.PrintState();
                     Console.WriteLine("Analyze Finished");
                     break;
                 }
@@ -124,19 +147,25 @@ namespace CLK.Client
                         HandleError();
                     }
                 }
+
+                else if (tmp.Count() != 0 && tmp[0].Equals("help"))
+                {
+                    Help();
+                }
                 else
                 {
                     HandleError();
                 }
             }
         }
+        private char[] empty = new char[] { ' ', '\r', '\t' };
         private void HandleInit()
         {
             string inputStr;
             while (true)
             {
                 inputStr = GetInput();
-                var tmp = inputStr.Split(' ').Select(X => X.Trim()).Where(x => !x.Equals("")).ToArray();
+                var tmp = inputStr.Split(empty, StringSplitOptions.RemoveEmptyEntries);
                 if (tmp.Length != 0)
                 {
                     if (tmp[0].Equals("print") && tmp.Length == 2)
@@ -160,7 +189,7 @@ namespace CLK.Client
                             }
                             else
                             {
-                                tmpstr = tmp.Skip(1).Aggregate("", (x, y) => x + y);
+                                tmpstr = tmp.Skip(1).Aggregate("", (x, y) => x + " " + y);
                             }
                             try
                             {
@@ -168,11 +197,11 @@ namespace CLK.Client
                                 input = DefaultSymbolStreamFactory.CreateFromStr(tmpCFG, tmpstr);
                                 parse.Init(input);
                                 state = ClientState.Running;
-                                break;
+                                break;  //状态转移
                             }
                             catch (Exception e)
                             {
-                                Console.WriteLine("Error: \n" + e.Message);
+                                Console.WriteLine("Error:" + e.Message);
                                 continue;
                             }
                         }
@@ -181,6 +210,10 @@ namespace CLK.Client
                             Console.WriteLine("Error: Only CFG can use parser");
                             continue;
                         }
+                    }
+                    else if (tmp[0].Equals("help"))
+                    {
+                        Help();
                     }
                     else
                     {
@@ -195,7 +228,7 @@ namespace CLK.Client
             while (true)
             {
                 string input = GetInput();
-                var tmp = input.Split(' ');
+                var tmp = input.Split(new char[] { ' ', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 if (tmp.Count() == 2 && tmp[0].Equals("load"))
                 {
                     try
@@ -209,6 +242,10 @@ namespace CLK.Client
                     {
                         Console.WriteLine("Load Failed:\n" + e.Message);
                     }
+                }
+                else if (tmp.Count() != 0 && tmp[0].Equals("help"))
+                {
+                    Help();
                 }
                 else
                 {
@@ -240,7 +277,7 @@ namespace CLK.Client
         {
             string errorMsg = "Invail Input";
             Console.WriteLine(errorMsg);
-            Help();
+            //Help();
         }
         private void HandlerPrint(string target)
         {
@@ -252,41 +289,40 @@ namespace CLK.Client
                 HandleError();
                 return;
             }
-
-            if (target.Equals("first"))
+            try
             {
-                tmpCfg.GetFirstSetOfNonterminals().Print();
-            }
-            else if (target.Equals("firstset"))
-            {
-                tmpCfg.GetFirstSetOfStructure().Print();
-            }
-            else if (target.Equals("follow"))
-            {
-                tmpCfg.GetFollow().Print();
-            }
-            else if (target.Equals("lltable"))
-            {
-                try
+                if (target.Equals("first"))
+                {
+                    tmpCfg.GetFirstSetOfNonterminals().Print();
+                }
+                else if (target.Equals("firstset"))
+                {
+                    tmpCfg.GetFirstSetOfStructure().Print();
+                }
+                else if (target.Equals("follow"))
+                {
+                    tmpCfg.GetFollow().Print();
+                }
+                else if (target.Equals("lltable"))
                 {
                     tmpCfg.GetPATable().Print();
                 }
-                catch (Exception e)
+                else if (target.Equals("itemsset"))
                 {
-                    Console.Error.WriteLine("Error: " + e.Message);
+                    tmpCfg.GetItemsSet().Print();
+                }
+                else if (target.Equals("lrtable"))
+                {
+                    tmpCfg.GetLRTable().Print();
+                }
+                else
+                {
+                    HandleError();
                 }
             }
-            else if (target.Equals("itemsset"))
+            catch (Exception e)
             {
-                tmpCfg.GetItemsSet().Print();
-            }
-            else if (target.Equals("lrtable"))
-            {
-                tmpCfg.GetLRTable().Print();
-            }
-            else
-            {
-                HandleError();
+                Console.Error.WriteLine("Error:" + e.Message);
             }
             return;
         }
